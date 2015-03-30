@@ -6,21 +6,39 @@
 #include <cassert>
 #include <algorithm>
 
-struct Triple
+class Triple
 {
-	std::string s,p,o;
+	public:
+		Triple(const std::string& s, const std::string& p, const std::string& o)
+			:_s(s),_p(p),_o(o)
+		{
+		}
+		const std::string& s() const
+		{
+			return _s;
+		}
+		const std::string& p() const
+		{
+			return _p;
+		}
+		const std::string& o() const
+		{
+			return _o;
+		}
+	private:
+		std::string _s,_p,_o;
 };
 
 std::ostream& operator<<(std::ostream& o, const Triple& t)
 {
-	return o<<"(<"<<t.s<<"> <"<<t.p<<"> <"<<t.o<<">)";
+	return o<<"(<"<<t.s()<<"> <"<<t.p()<<"> <"<<t.o()<<">)";
 }
 
 struct PComparator
 {
 	bool operator()(const Triple& a, const Triple& b)
 	{
-		return a.p.compare(b.p)<0;
+		return a.p().compare(b.p())<0;
 	}
 };
 
@@ -33,11 +51,10 @@ static void print_triple(void* user_data, raptor_statement* triple)
 	Triples &triples(*static_cast<Triples*>(user_data));
 	if(triple->object->type!=RAPTOR_TERM_TYPE_URI)
 		return;
-	Triple t;
-	t.s=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->subject->value.uri, NULL)));
-	t.p=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->predicate->value.uri, NULL)));
-	t.o=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->object->value.uri, NULL)));
-	triples.push_back(t);
+	std::string s=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->subject->value.uri, NULL)));
+	std::string p=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->predicate->value.uri, NULL)));
+	std::string o=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->object->value.uri, NULL)));
+	triples.push_back(Triple(s,p,o));
 }
 
 void load(const std::string& file, Triples& result)
@@ -191,15 +208,13 @@ struct Data
 
 Data Compress(Triples& triples)
 {
-	Stats soStats, pStats;
+	Stats soStats;
 	for(auto t:triples)
 	{
-		soStats[t.s]++;
-		soStats[t.o]++;
-		pStats[t.p]++;
+		soStats[t.s()]++;
+		soStats[t.o()]++;
 	}
 	Codes soCodes=Compress(soStats);
-	Codes pCodes=Compress(pStats);
 	uint32_t *data=new uint32_t[2*triples.size()];
 	size_t n=0;
 	std::sort(triples.begin(), triples.end(), PComparator());
@@ -207,15 +222,14 @@ Data Compress(Triples& triples)
 	Deltas deltas;
 	for(auto i:triples)
 	{
-		if(i.p!=prevP)
+		if(i.p()!=prevP)
 		{
-			prevP=i.p;
+			prevP=i.p();
 			deltas[prevP]=n;
 		}
-		Code &sc(soCodes[i.s]);
-//		Code &pc(pCodes[i.p]);
-		Code &oc(soCodes[i.o]);
-		int len=sc.size()+/*pc.size()+*/oc.size()/*+1*/;
+		Code &sc(soCodes[i.s()]);
+		Code &oc(soCodes[i.o()]);
+		int len=sc.size()+oc.size();
 		assert(len<=32);	//TODO: przywrócić support dla dłuższych wyrażeń
 		Code c;
 #if 0
@@ -227,11 +241,9 @@ Data Compress(Triples& triples)
 		c.reserve(32);
 		c.insert(c.end(), sc.begin(), sc.end());
 		c.insert(c.end(), 32-len, false);
-//		c.insert(c.end(), pc.begin(), pc.end());
 		c.insert(c.end(), oc.rbegin(), oc.rend());
 		uint64_t code=convert(c);
 		data[n++]=static_cast<uint32_t>(code);
-		//std::cout<<code<<"\n";
 	}
 	for(auto i:deltas)
 		std::cout<<i.first<<" -> "<<i.second<<"\n";
@@ -329,7 +341,7 @@ void Search(const Data& data, const Query& q1, const Query& q2, std::deque<uint3
 Triple decode(uint32_t triple, const Data& data)
 {
 	std::cout<<"Decoding "<<std::hex<<triple<<std::dec<<"\n";
-	Triple result;
+	std::string s,o;
 	for(Codes::const_iterator i=data.codes.begin();i!=data.codes.end();++i)
 	{
 		Code c=i->second;
@@ -339,10 +351,9 @@ Triple decode(uint32_t triple, const Data& data)
 		if(((triple>>(32-len))&mask)==v)
 		{
 			std::cout<<"Found subject with code "<<std::hex<<v<<std::dec<<" of length "<<len<<"\n";
-			assert(result.s.empty());
-			result.s=i->first;
-			triple&=~(mask<<(32-len));
-			break;
+			assert(s.empty());
+			s=i->first;
+			//TODO: zasadniczo tu powinien być break, ale nie chcę tego robić dopóki nie będę w miarę pewien, że assert się nie odpala
 		}
 	}
 	for(Codes::const_iterator i=data.codes.begin();i!=data.codes.end();++i)
@@ -350,14 +361,15 @@ Triple decode(uint32_t triple, const Data& data)
 		Code c=i->second;
 		size_t len=c.size();
 		uint32_t v=convert(c,true);
-		if(triple==v)
+		uint32_t mask=(1<<len)-1;
+		if((triple&mask)==v)
 		{
 			std::cout<<"Found object with code "<<std::hex<<v<<std::dec<<" of length "<<len<<"\n";
-			assert(result.o.empty());
-			result.o=i->first;
+			assert(o.empty());
+			o=i->first;
 		}
 	}
-	return result;
+	return Triple(s,"",o);
 }
 
 int main(int argc, char **argv)
