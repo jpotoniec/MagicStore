@@ -19,6 +19,10 @@ class MaskedValue
 		{
 			return (x&m)==v;
 		}
+		bool IsValid() const
+		{
+			return m!=0;
+		}
 	private:
 		uint32_t v,m;
 };
@@ -45,6 +49,14 @@ class Query
 		bool Match(uint32_t value) const
 		{
 			return s.Match(value) && o.Match(value);
+		}
+		void subject(const BinaryCode& c)
+		{
+			s=MaskedValue(c.leftNormal(), c.maskLeft());
+		}
+		void object(const BinaryCode& c)
+		{
+			o=MaskedValue(c.rightReversed(), c.maskRight());
 		}
 		static Query Build(const Data& data, const std::string& s, const std::string& p, const std::string& o);
 	private:

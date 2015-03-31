@@ -71,31 +71,48 @@ void Search(const Data& data, const Query& query, const T& processor)
 	for(size_t i=query.begin();i<query.end();++i)
 		if(query.Match(data.data[i]))
 		{
-			processor(i, data.data[i]);
 			std::cout<<"\tFound at position "<<i<<": "<<std::hex<<data.data[i]<<std::dec<<"\n";
+			if(!processor(i, data.data[i]))
+				return;
 		}
 
 }
 
 void Search(const Data& data, const Query& query, std::deque<uint32_t>& triples)
 {
-	Search(data, query, [&triples](uint32_t i,uint32_t val) {triples.push_back(val);});
+	Search(data, query, [&triples](uint32_t i,uint32_t val) {triples.push_back(val); return true;});
 }
 
-#if 0
-void Search(const Data& data, const Query& q1, const Query& q2, std::deque<uint32_t>& result)
+bool Ask(const Data& data, const Query& query)
+{
+	bool result=false;
+	Search(data, query, [&result](uint32_t i,uint32_t val) {result=true; return false;});
+	return result;
+}
+
+void Search(const Data& data, const Query& q1, const Query& q2, std::deque<std::pair<uint32_t,uint32_t>>& result)
 {
 	std::deque<uint32_t> triples;
 	Search(data, q1, triples);
+	Query q(q2);
+	assert(q1.subject().IsValid() || q1.object().IsValid());
+	bool decodeSubject=q1.object().IsValid();
+	bool encodeSubject=!q2.subject().IsValid();
+	std::cout<<"In the loop, will decode "<<(decodeSubject?"subject":"object")<<" and encode "<<(encodeSubject?"subject":"object")<<"\n";
 	for(auto t:triples)
 	{
-		Query q(q2);
-		q.mask=std::numeric_limits<uint32_t>::max();
-		q.value=(t&(~std::max(q1.mask, q2.mask)))|(q2.value);
-		Search(data, q, result);
+		BinaryCode c;
+		if(decodeSubject)
+			c=data.codes->DecodeLeft(t);
+		else
+			c=data.codes->DecodeRight(t);
+		if(encodeSubject)
+			q.subject(c);
+		else
+			q.object(c);
+		Search(data, q, [&result, t](uint32_t i, uint32_t val) {result.push_back(std::make_pair(t, val)); return true;});
 	}
 }
-#endif
 
 Triple decode(uint32_t triple, const Data& data)
 {
@@ -116,11 +133,12 @@ int main(int argc, char **argv)
 	Data data=Compress(triples);
 	Query q1=Query::Build(data,"",a,ub+"GraduateStudent");
 	Query q2=Query::Build(data,"", ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0");
-	std::deque<uint32_t> result;
-	Search(data, q1, /*q2,*/ result);
+	Query q3=Query::Build(data,"", ub+"takesCourse", "");
+	std::deque<std::pair<uint32_t,uint32_t>> result;
+	Search(data, q1, q2, result);
 	std::cout<<"Found "<<result.size()<<" triples\n";
-	if(result.size()<50)
-		for(uint32_t i:result)
-			std::cout<<decode(i, data)<<"\n";
+//	if(result.size()<50)
+		for(auto i:result)
+			std::cout<<decode(i.first, data)<<" | "<<decode(i.second, data)<<"\n";
 	return 0;
 }

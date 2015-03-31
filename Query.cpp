@@ -14,13 +14,11 @@ Query Query::Build(const Data& data, const std::string& s, const std::string& p,
 		result._end=j->second;
 	if(!s.empty())
 	{
-		BinaryCode c=(*data.codes)[s];
-		result.s=MaskedValue(c.leftNormal(), c.maskLeft());
+		result.subject((*data.codes)[s]);
 	}
 	if(!o.empty())
 	{
-		BinaryCode c=(*data.codes)[o];
-		result.o=MaskedValue(c.rightReversed(), c.maskRight());
+		result.object((*data.codes)[o]);
 	}
 	return result;
 }
