@@ -1,4 +1,4 @@
-SRC=Compressor.cpp MagicStore.cpp Triple.cpp Query.cpp
+SRC=Compressor.cpp MagicStore.cpp Triple.cpp Query.cpp TreePattern.cpp
 TESTS= BinaryCodeTest.cpp
 OBJECTS=$(SRC:%.cpp=%.o)
 CXX=g++

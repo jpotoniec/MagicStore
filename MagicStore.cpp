@@ -1,5 +1,6 @@
 #include "Query.hpp"
 #include "Triple.hpp"
+#include "TreePattern.hpp"
 #include <iostream>
 #include <map>
 #include <queue>
@@ -121,8 +122,29 @@ Triple decode(uint32_t triple, const Data& data)
 	return Triple(s,"",o);
 }
 
+Triples operator+(Triples t, const Triple& x)
+{
+	t.push_back(x);
+	return t;
+}
+
+Triples operator+(const Triple& x, const Triple& y)
+{
+	Triples t;
+	t.push_back(x);
+	t.push_back(y);
+	return t;
+}
+
 int main(int argc, char **argv)
 {
+	auto query=TreePattern::Node::fromTriples(
+		Triple("?x",a,ub+"GraduateStudent")
+		+Triple("?x",ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0")
+		+Triple("?x",ub+"advisor", "?y")
+		+Triple("?y",ub+"teacherOf", "?z")
+		+Triple("?z",a, ub+"GraduateCourse"));
+	query->dump(std::cout);
 	Triples triples;
 	for(int i=1;i<argc;i++)
 	{
