@@ -49,10 +49,9 @@ class TBinaryCode
 		uint8_t length() const {return len;}
 		void append(bool v)
 		{
-			assert(len<sizeof(val)*8);
-			val<<=1;
+			assert(len<sizeof(val)*8);			
 			if(v)
-				val|=1;
+                val|=(1<<len);
 			len++;
 		}
 		TBinaryCode(T val, uint8_t len)
@@ -88,10 +87,32 @@ class TBinaryCode
 		{
 			return maskRight()<<(sizeof(T)*8-len);
 		}
+		friend bool operator==(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
+		{
+			return a.val==b.val && a.len==b.len;
+		}
+		friend bool operator!=(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
+		{
+			return !(a==b);
+		}
+        friend bool operator<(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
+        {
+            if(a.len!=b.len)
+                return a.len<b.len;
+            return a.val<b.val;
+        }
+
 	private:
 		T val;
 		uint8_t len;
 };
+
+#include <iostream>
+template<typename T>
+std::ostream& operator<<(std::ostream& o, const TBinaryCode<T>& c)
+{
+    return o<<std::hex<<c.value()<<"/"<<std::dec<<static_cast<uint32_t>(c.length());
+}
 
 typedef TBinaryCode<uint32_t> BinaryCode;
 
@@ -102,6 +123,23 @@ class Codes : private boost::noncopyable
 		{
 			return valToCode.find(value)->second;
 		}
+        std::string decode(const BinaryCode& code)
+        {
+            return decode(code.value());
+        }
+        std::string decode(uint32_t code)
+        {
+            const Node *n=root;
+            while(n->hasChildren())
+            {
+                if(code&1)
+                    n=n->getRight();
+                else
+                    n=n->getLeft();
+                code>>=1;
+            }
+            return n->getLabel();
+        }
 		std::string DecodeLabelRight(uint32_t var) const
 		{
 			const Node *n=root;

@@ -1,6 +1,7 @@
 #include "Query.hpp"
 #include "Triple.hpp"
 #include "TreePattern.hpp"
+#include "BinaryTriples.hpp"
 #include <iostream>
 #include <map>
 #include <queue>
@@ -15,7 +16,14 @@ struct PComparator
 {
 	bool operator()(const Triple& a, const Triple& b)
 	{
-		return a.p().compare(b.p())<0;
+		int c=a.p().compare(b.p());
+		if(c!=0)
+			return c<0;
+		c=a.s().compare(b.s());
+		if(c!=0)
+			return c<0;
+		c=a.o().compare(b.o());
+		return c<0;
 	}
 };
 
@@ -136,8 +144,24 @@ Triples operator+(const Triple& x, const Triple& y)
 	return t;
 }
 
+#include <dirent.h>
+void LoadDir(const std::string& dirname, Triples& triples)
+{
+    DIR *d=opendir(dirname.c_str());
+    dirent *de;
+    while((de=readdir(d))!=NULL)
+    {
+        std::string file(de->d_name);
+        file=dirname+"/"+file;
+        if(file.find(".owl")==file.length()-4)
+            LoadTriples(file, triples);
+    }
+    closedir(d);
+}
+
 int main(int argc, char **argv)
 {
+#if 0
 	auto query=TreePattern::Node::fromTriples(
 		Triple("?x",a,ub+"GraduateStudent")
 		+Triple("?x",ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0")
@@ -145,13 +169,28 @@ int main(int argc, char **argv)
 		+Triple("?y",ub+"teacherOf", "?z")
 		+Triple("?z",a, ub+"GraduateCourse"));
 	query->dump(std::cout);
+#endif
 	Triples triples;
+#if 0
 	for(int i=1;i<argc;i++)
 	{
 		std::cout<<"Loading "<<argv[i]<<"\n";
 		LoadTriples(argv[i], triples);
 	}
+#endif
+    LoadDir("lubm", triples);
 	std::cout<<"# of triples"<<triples.size()<<"\n";
+	BinaryTriples bt;
+	bt.fill(triples);
+    auto query=TreePattern::Node::fromTriples(
+        Triple("?x",a,ub+"GraduateStudent")
+        +Triple("?x",ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0")
+        );
+    query->dump(std::cout);
+    auto result=bt.answer(query);
+    for(auto i:result)
+        std::cout<<i<<"\n";
+#if 0
 	Data data=Compress(triples);
 	Query q1=Query::Build(data,"",a,ub+"GraduateStudent");
 	Query q2=Query::Build(data,"", ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0");
@@ -162,5 +201,6 @@ int main(int argc, char **argv)
 //	if(result.size()<50)
 		for(auto i:result)
 			std::cout<<decode(i.first, data)<<" | "<<decode(i.second, data)<<"\n";
+#endif
 	return 0;
 }

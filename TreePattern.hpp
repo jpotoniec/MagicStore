@@ -23,6 +23,10 @@ namespace TreePattern
 			{
 				return _label;
 			}
+            bool isDefined() const
+            {
+                return _label[0]!='?';
+            }
 			const Node* parent() const
 			{
 				return _parent;

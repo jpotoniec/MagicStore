@@ -22,3 +22,19 @@ BOOST_AUTO_TEST_CASE(MaskRight)
 	BinaryCode b(0, 4);
 	BOOST_CHECK_EQUAL(b.maskRight(), 0b1111);
 }
+
+void write(uint8_t *where, size_t &wlen, const BinaryCode& c);
+uint32_t read(const uint8_t *where, size_t &position);
+BOOST_AUTO_TEST_CASE(Write)
+{
+	uint8_t *data=new uint8_t[128];
+	memset(data, 0, 128);
+	size_t len=0;
+	write(data, len, BinaryCode(0b1011, 4));
+	write(data, len, BinaryCode(0b110010100011, 12));
+	BOOST_CHECK_EQUAL(len, 3);
+	size_t pos=0;
+	BOOST_CHECK_EQUAL(read(data, pos), 0b1011);
+	BOOST_CHECK_EQUAL(read(data, pos), 0b110010100011);
+	BOOST_CHECK_EQUAL(pos, len);
+}

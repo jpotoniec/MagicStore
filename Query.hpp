@@ -30,11 +30,11 @@ class MaskedValue
 class Query
 {
 	public:
-		const size_t begin() const
+        size_t begin() const
 		{
 			return _begin;
 		}
-		const size_t end() const
+        size_t end() const
 		{
 			return _end;
 		}

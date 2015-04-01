@@ -1,6 +1,7 @@
 #include "Compressor.hpp"
 #include <deque>
 #include <queue>
+#include <iostream>
 
 class NodesOrder
 {
@@ -30,18 +31,19 @@ Codes::Codes(const std::map<std::string,int>& stats)
 {
 	std::priority_queue<Node*,std::deque<Node*>,NodesOrder> nodes;
 	for(auto i:stats)
-		nodes.push(new Node(i.first, i.second));
+		nodes.push(new Node(i.first, i.second));    
 	for(;;)
 	{
+        assert(!nodes.empty());
 		Node *l=nodes.top();
-		nodes.pop();
+		nodes.pop();        
 		if(nodes.empty())
 		{
 			root=l;
 			break;
-		}
+		}        
 		Node *r=nodes.top();
-		nodes.pop();
+		nodes.pop();        
 		nodes.push(new Node("",l->getOccurences()+r->getOccurences(),l,r));
 	}
 	MakeCode(root, BinaryCode());
