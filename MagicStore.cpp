@@ -161,14 +161,18 @@ void LoadDir(const std::string& dirname, Triples& triples)
 
 int main(int argc, char **argv)
 {
-#if 0
+#if 1
 	auto query=TreePattern::Node::fromTriples(
 		Triple("?x",a,ub+"GraduateStudent")
 		+Triple("?x",ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0")
 		+Triple("?x",ub+"advisor", "?y")
-		+Triple("?y",ub+"teacherOf", "?z")
-		+Triple("?z",a, ub+"GraduateCourse"));
+                +Triple("?y",a,ub+"AssociateProfessor")
+        +Triple("?y",ub+"teacherOf", "?z")
+        +Triple("?z",a, ub+"GraduateCourse"));
 	query->dump(std::cout);
+#endif
+#if 0
+    auto query=TreePattern::Node::fromTriples(Triples()+Triple("?x",a,ub+"AssociateProfessor"));
 #endif
 	Triples triples;
 #if 0
@@ -182,10 +186,12 @@ int main(int argc, char **argv)
 	std::cout<<"# of triples"<<triples.size()<<"\n";
 	BinaryTriples bt;
 	bt.fill(triples);
+#if 0
     auto query=TreePattern::Node::fromTriples(
         Triple("?x",a,ub+"GraduateStudent")
         +Triple("?x",ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0")
         );
+#endif
     query->dump(std::cout);
     auto result=bt.answer(query);
     for(auto i:result)

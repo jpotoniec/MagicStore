@@ -123,7 +123,7 @@ BinaryTriples::Address BinaryTriples::subjectsForPredicate(const BinaryCode& p) 
 BinaryTriples::Address BinaryTriples::objectsForSubject(const Address& a, const BinaryCode& s) const
 {
     size_t len=a.second-a.first;
-    const uint8_t *ptr=find(subjects, len, s.value(), s.length(), true);
+    const uint8_t *ptr=find(subjects+a.first, len, s.value(), s.length(), true);
     if(ptr!=NULL)
     {
         size_t begin=*reinterpret_cast<const size_t*>(ptr);
@@ -138,7 +138,7 @@ BinaryTriples::Address BinaryTriples::objectsForSubject(const Address& a, const 
         return invalid;
 }
 
-BinaryTriples::Address BinaryTriples::objectsForPS(const BinaryCode& s, const BinaryCode& p) const
+BinaryTriples::Address BinaryTriples::objectsForSP(const BinaryCode& s, const BinaryCode& p) const
 {
     Address sa=subjectsForPredicate(p);
     if(sa!=invalid)
@@ -197,8 +197,44 @@ void BinaryTriples::fill(Triples& triples)
 	std::cout<<"pLen="<<pLen<<" sLen="<<sLen<<" oLen="<<oLen<<"\n";
 }
 
+bool BinaryTriples::ask(const TreePattern::Node* query, const BinaryCode& s) const
+{
+    for(auto child:query->children())
+    {
+        auto p=(*pCodes)[child.first];
+        std::cout<<soCodes->decode(s)<<" "<<pCodes->decode(p)<<"\n";
+        auto addr=objectsForSP(s, p);
+        if(child.second->isDefined())
+        {
+            BinaryCode o=(*soCodes)[child.second->label()];
+            std::cout<<"  Looking for "<<soCodes->decode(o)<<" in "<<addr.first<<","<<addr.second<<"\n";
+            auto ptr=find(objects+addr.first,addr.second-addr.first,o.value(), o.length(), false);
+            std::cout<<"  "<<(ptr?"OK":"FAIL")<<"\n";
+            if(ptr==NULL)
+                return false;
+        }
+        else
+        {
+            bool b=false;
+            for(size_t a=addr.first;a<addr.second;)
+            {
+                BinaryCode o=read(objects, a);
+                if(ask(child.second, o))
+                {
+                    b=true;
+                    break;
+                }
+            }
+            if(!b)
+                return false;
+        }
+    }
+    return true;
+}
+
 std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) const
 {
+#if 0
     for(size_t i=0;i<pLen;i+=sizeof(size_t))
     {
         BinaryCode c=read(predicates, i);
@@ -206,7 +242,10 @@ std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) co
         memcpy(&pos, predicates+i, sizeof(size_t));
         std::cout<<pCodes->decode(c)<<" "<<c<<" @"<<pos<<"\n";
     }
+#endif
     std::map<BinaryCode,int> candidates;
+    bool first=true;
+    int n=0;
     for(auto child:query->children())
     {
         auto code=(*pCodes)[child.first];
@@ -215,25 +254,38 @@ std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) co
         for(size_t pos=addr.first;pos<addr.second;pos+=sizeof(size_t))
         {
             BinaryCode c=read(subjects, pos);
+            if(!first && candidates[c]<n)
+                continue;
+            size_t oBegin;
+            memcpy(&oBegin, subjects+pos, sizeof(size_t));
+            size_t tmp=pos+sizeof(size_t);
+            read(subjects,tmp);
+            size_t oEnd;
+            memcpy(&oEnd, subjects+tmp, sizeof(size_t));
             if(child.second->isDefined())
             {
                 BinaryCode o=(*soCodes)[child.second->label()];
-                size_t oBegin;
-                memcpy(&oBegin, subjects+pos, sizeof(size_t));
-                size_t tmp=pos+sizeof(size_t);
-                read(subjects,tmp);
-                size_t oEnd;
-                memcpy(&oEnd, subjects+tmp, sizeof(size_t));
                 auto ptr = find(objects+oBegin, oEnd-oBegin, o.value(), o.length(), false);
                 if(ptr!=NULL)
                     candidates[c]++;
             }
-            else    //TODO: zagłębianie się
-                candidates[c]++;
+            else
+            {
+                for(size_t a=oBegin;a<oEnd;)
+                {
+                    BinaryCode o=read(objects, a);
+                    if(ask(child.second, o))
+                    {
+                        candidates[c]++;
+                        break;
+                    }
+                }
+            }
         }
+        first=false;
+        n++;
     }
-    std::deque<std::string> answer;
-    int n=query->children().size();
+    std::deque<std::string> answer;    
     for(auto c:candidates)
     {
         if(c.second==n)
