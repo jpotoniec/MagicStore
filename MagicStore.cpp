@@ -159,21 +159,74 @@ void LoadDir(const std::string& dirname, Triples& triples)
     closedir(d);
 }
 
+std::string resolve(const std::string& input)
+{
+    std::map<std::string,std::string> prefixes;
+    if(input[0]=='?')
+        return input;
+    if(input=="a")
+        return rdf+"type";
+    prefixes["ub:"]=ub;
+    for(auto p:prefixes)
+        if(input.find(p.first)==0)
+            return p.second+input.substr(p.first.length());
+    return input;
+}
+
+Triples parseSparql(const std::string& sparql)
+{
+    Triples result;
+    std::string t[3];
+    int pos=0;
+    for(auto i=0;i<sparql.length();++i)
+    {
+        char c=sparql[i];
+        if(isspace(c))
+        {
+            if(pos<2 && !t[pos].empty())
+                pos++;
+            continue;
+        }
+        if(c=='<')
+        {
+            i++;
+            for(;sparql[i]!='>';++i)
+                t[pos]+=sparql[i];
+            continue;
+        }
+        if(c=='.' || c==',' || c==';')
+        {
+            result.push_back(Triple(resolve(t[0]),resolve(t[1]),resolve(t[2])));
+            switch(c)
+            {
+            case '.':
+                pos=0;
+                break;
+            case ';':
+                pos=1;
+                break;
+            case ',':
+                pos=2;
+                break;
+            }
+            for(auto j=pos;j<=2;++j)
+                t[j]="";
+            continue;
+        }
+        t[pos]+=c;
+    }
+    return result;
+}
+
 int main(int argc, char **argv)
 {
-#if 1
-	auto query=TreePattern::Node::fromTriples(
-		Triple("?x",a,ub+"GraduateStudent")
-		+Triple("?x",ub+"takesCourse", "http://www.Department0.University0.edu/GraduateCourse0")
-		+Triple("?x",ub+"advisor", "?y")
-                +Triple("?y",a,ub+"AssociateProfessor")
-        +Triple("?y",ub+"teacherOf", "?z")
-        +Triple("?z",a, ub+"GraduateCourse"));
-	query->dump(std::cout);
-#endif
-#if 0
-    auto query=TreePattern::Node::fromTriples(Triples()+Triple("?x",a,ub+"AssociateProfessor"));
-#endif
+    auto query=TreePattern::Node::fromTriples(parseSparql(std::string("?x a ub:GraduateStudent;")+
+                                                          "   ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>;"+
+                                                          "   ub:advisor ?y."+
+                                                          "?y a ub:AssociateProfessor;"+
+                                                          "   ub:teacherOf ?z."+
+                                                          "?z a ub:GraduateCourse."
+                                                          ));
 	Triples triples;
 #if 0
 	for(int i=1;i<argc;i++)
