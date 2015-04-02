@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 	std::cout<<"# of triples"<<triples.size()<<"\n";
 	BinaryTriples bt;
 	bt.fill(triples);
-    query->dump(std::cout);
+    query->sort();
     auto result=bt.answer(query);
     for(auto i:result)
         std::cout<<i<<"\n";
