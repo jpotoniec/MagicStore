@@ -62,31 +62,6 @@ class TBinaryCode
 			:TBinaryCode(0,0)
 		{
 		}
-		T leftNormal() const
-		{
-			return val<<(sizeof(T)*8-len);
-		}
-		T rightReversed() const
-		{
-			T input(val);
-			T output(0);
-			for(uint8_t i=0;i<len;++i)
-			{
-				output<<=1;
-				if(input&1)
-					output|=1;
-				input>>=1;
-			}
-			return output;
-		}
-		T maskRight() const
-		{
-			return (static_cast<T>(1)<<len)-1;
-		}
-		T maskLeft() const
-		{
-			return maskRight()<<(sizeof(T)*8-len);
-		}
 		friend bool operator==(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
 		{
 			return a.val==b.val && a.len==b.len;
@@ -140,72 +115,6 @@ class Codes : private boost::noncopyable
             }
             return n->getLabel();
         }
-		std::string DecodeLabelRight(uint32_t var) const
-		{
-			const Node *n=root;
-			while(n->hasChildren())
-			{
-				if(var&0x1)
-					n=n->getRight();
-				else
-					n=n->getLeft();
-				var>>=1;
-			}
-			return n->getLabel();
-		}
-		std::string DecodeLabelLeft(uint32_t var) const
-		{
-			const Node *n=root;
-			while(n->hasChildren())
-			{
-				if(var&(1<<31))
-					n=n->getRight();
-				else
-					n=n->getLeft();
-				var<<=1;
-			}
-			return n->getLabel();
-		}
-		BinaryCode DecodeRight(uint32_t var) const
-		{
-			uint32_t val=0;
-			uint8_t len=0;
-			const Node *n=root;
-			while(n->hasChildren())
-			{
-				val<<=1;
-				len++;
-				if(var&0x1)
-				{
-					n=n->getRight();
-					val|=1;
-				}
-				else
-					n=n->getLeft();
-				var>>=1;
-			}
-			return BinaryCode(val, len);
-		}
-		BinaryCode DecodeLeft(uint32_t var) const
-		{
-			uint32_t val=0;
-			uint8_t len=0;
-			const Node *n=root;
-			while(n->hasChildren())
-			{
-				val<<=1;
-				len++;
-				if(var&(1<<31))
-				{
-					n=n->getRight();
-					val|=1;
-				}
-				else
-					n=n->getLeft();
-				var<<=1;
-			}
-			return BinaryCode(val, len);
-		}
 		Codes(const std::map<std::string,int>& stats);
 	private:
 		void MakeCode(const Node *root, const BinaryCode& prefix);
