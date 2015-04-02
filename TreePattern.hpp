@@ -31,13 +31,17 @@ namespace TreePattern
 			{
 				return _parent;
 			}
+            const std::string& parentProperty() const
+            {
+                return _parentProperty;
+            }
 			const Children& children() const
 			{
 				return _children;
 			}
 			bool isRoot() const
 			{
-				return parent()!=NULL;
+                return parent()==NULL;
 			}
 			static Node* fromTriples(const std::deque<Triple>& triples);
 			void dump(std::ostream& o, const std::string& prefix="") const;

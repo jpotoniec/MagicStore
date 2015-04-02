@@ -102,13 +102,18 @@ Triples parseSparql(const std::string& sparql)
 
 int main(int argc, char **argv)
 {
-    auto query=TreePattern::Node::fromTriples(parseSparql(std::string("?x a ub:GraduateStudent;")+
-                                                          "   ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>;"+
-                                                          "   ub:advisor ?y."+
-                                                          "?y a ub:AssociateProfessor;"+
-                                                          "   ub:teacherOf ?z."+
-                                                          "?z a ub:GraduateCourse."
-                                                          ));
+#if 1
+    auto query=TreePattern::Node::fromTriples(parseSparql(std::string()
+                                                          +"?x a ub:GraduateStudent;"
+                                                          +"   ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>;"+
+                                                          +"   ub:advisor ?y."
+                                                          +"?y a ub:AssociateProfessor;"
+                                                          +"   ub:teacherOf ?z."
+                                                          +"?z a ub:GraduateCourse."
+                                                          ));    
+#else
+    auto query=TreePattern::Node::fromTriples(parseSparql("?x a ub:GraduateStudent; ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>."));
+#endif
 	Triples triples;
 #if 0
 	for(int i=1;i<argc;i++)
@@ -125,5 +130,6 @@ int main(int argc, char **argv)
     auto result=bt.answer(query);
     for(auto i:result)
         std::cout<<i<<"\n";
+    std::cout<<"# of rows: "<<result.size()<<std::endl;
 	return 0;
 }

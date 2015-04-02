@@ -64,7 +64,7 @@ class TBinaryCode
 		}
 		friend bool operator==(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
 		{
-			return a.val==b.val && a.len==b.len;
+            return a.val==b.val;
 		}
 		friend bool operator!=(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
 		{
@@ -72,11 +72,16 @@ class TBinaryCode
 		}
         friend bool operator<(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
         {
-            if(a.len!=b.len)
-                return a.len<b.len;
-            return a.val<b.val;
+            return compare(a,b)<0;
         }
-
+        friend int compare(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
+        {
+            if(a.val<b.val)
+                return -1;
+            else if(a.val>b.val)
+                return 1;
+            return 0;
+        }
 	private:
 		T val;
 		uint8_t len;
