@@ -29,20 +29,18 @@ void Codes::MakeCode(const Node *root, const BinaryCode& prefix)
 
 void Codes::inc(const std::string &label)
 {
-    Node *n=input[label];
-    if(n==NULL)
-    {
-        n=new Node(label,0);
-        input[label]=n;
-    }
-    n->inc();
+    Node *n=new Node(label,0);
+    auto i=input.insert(n);
+    if(!i.second)
+        delete n;
+    (*i.first)->inc();
 }
 
 void Codes::compress()
 {
 	std::priority_queue<Node*,std::deque<Node*>,NodesOrder> nodes;
     for(auto i:input)
-        nodes.push(i.second);
+        nodes.push(i);
     input.clear();
 	for(;;)
 	{

@@ -6,6 +6,7 @@
 #include <map>
 #include <cassert>
 #include <memory>
+#include <unordered_set>
 
 class Node
 {
@@ -52,6 +53,20 @@ class Node
 		const Node *left,*right;
 };
 
+class NodeSetHelper
+{
+public:
+    size_t operator()(const Node *a) const
+    {
+        return hasher(a->getLabel());
+    }
+    bool operator()(const Node *a, const Node *b) const
+    {
+        return a->getLabel()==b->getLabel();
+    }
+private:
+    std::hash<std::string> hasher;
+};
 
 template<typename T>
 class TBinaryCode
@@ -152,7 +167,7 @@ class Codes : private boost::noncopyable
 		void MakeCode(const Node *root, const BinaryCode& prefix);
 		std::map<std::string,BinaryCode> valToCode;
 		Node *root;
-        std::map<std::string,Node*> input;
+        std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
 };
 
 #endif //COMPRESSORHPP
