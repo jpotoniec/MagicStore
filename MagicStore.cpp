@@ -26,21 +26,6 @@ Triples operator+(const Triple& x, const Triple& y)
 	return t;
 }
 
-#include <dirent.h>
-void LoadDir(const std::string& dirname, Triples& triples)
-{
-    DIR *d=opendir(dirname.c_str());
-    dirent *de;
-    while((de=readdir(d))!=NULL)
-    {
-        std::string file(de->d_name);
-        file=dirname+"/"+file;
-        if(file.find(".owl")==file.length()-4)
-            LoadTriples(file, triples);
-    }
-    closedir(d);
-}
-
 std::string resolve(const std::string& input)
 {
     std::map<std::string,std::string> prefixes;
@@ -122,7 +107,7 @@ int main(int argc, char **argv)
 		LoadTriples(argv[i], triples);
 	}
 #endif
-    LoadDir("lubm", triples);
+    LoadDir("lubm", [&triples](const Triple& t)->void {triples.push_back(t);});
 	std::cout<<"# of triples"<<triples.size()<<"\n";
 	BinaryTriples bt;
 	bt.fill(triples);
