@@ -27,7 +27,7 @@ void Codes::MakeCode(const Node *root, const BinaryCode& prefix)
 	}
 }
 
-Codes::Codes(const std::map<std::string,int>& stats)
+void Codes::fill(const std::map<std::string,int>& stats)
 {
 	std::priority_queue<Node*,std::deque<Node*>,NodesOrder> nodes;
 	for(auto i:stats)

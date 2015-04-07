@@ -11,6 +11,7 @@ namespace TreePattern
 
 	Node* Node::fromTriples(const std::deque<Triple>& triples)
 	{
+        //TODO: bleh, tu podobno jest jakiś wyciek na danych testowych
 		std::map<std::string,Node*> vars;
 		for(Triple t:triples)
 		{

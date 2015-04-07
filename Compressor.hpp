@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <map>
 #include <cassert>
+#include <memory>
 
 class Node
 {
@@ -34,6 +35,13 @@ class Node
 			assert((left==NULL && right==NULL) || (left!=NULL && right!=NULL));
 			return left!=NULL && right!=NULL;
 		}
+        ~Node()
+        {
+            if(left)
+                delete left;
+            if(right)
+                delete right;
+        }
 	private:
 		std::string label;
 		int occurences;
@@ -103,11 +111,11 @@ class Codes : private boost::noncopyable
 		{
 			return valToCode.find(value)->second;
 		}
-        std::string decode(const BinaryCode& code)
+        const std::string& decode(const BinaryCode& code) const
         {
             return decode(code.value());
         }
-        std::string decode(uint32_t code)
+        const std::string& decode(uint32_t code) const
         {
             const Node *n=root;
             while(n->hasChildren())
@@ -120,12 +128,21 @@ class Codes : private boost::noncopyable
             }
             return n->getLabel();
         }
-		Codes(const std::map<std::string,int>& stats);
+        void fill(const std::map<std::string,int>& stats);
+        Codes()
+            :root(NULL)
+        {
+
+        }
+        ~Codes()
+        {
+            if(root)
+                delete root;
+        }
 	private:
 		void MakeCode(const Node *root, const BinaryCode& prefix);
 		std::map<std::string,BinaryCode> valToCode;
 		Node *root;
 };
-
 
 #endif //COMPRESSORHPP

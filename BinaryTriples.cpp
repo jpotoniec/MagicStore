@@ -4,28 +4,29 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 typedef std::map<std::string,int> Stats;
 
 struct TriplesComparator
 {
-    TriplesComparator(const Codes *soCodes, const Codes *pCodes)
+    TriplesComparator(const Codes &soCodes, const Codes &pCodes)
         :soCodes(soCodes),pCodes(pCodes)
     {
     }
 	bool operator()(const Triple& a, const Triple& b)
     {
-        int c=compare((*pCodes)[a.p()], (*pCodes)[b.p()]);
+        int c=compare(pCodes[a.p()], pCodes[b.p()]);
         if(c!=0)
             return c<0;
-        c=compare((*soCodes)[a.o()], (*soCodes)[b.o()]);
+        c=compare(soCodes[a.o()], soCodes[b.o()]);
         if(c!=0)
             return c<0;
-        c=compare((*soCodes)[a.s()], (*soCodes)[b.s()]);
+        c=compare(soCodes[a.s()], soCodes[b.s()]);
         return c<0;
     }
 private:
-    const Codes *soCodes, *pCodes;
+    const Codes &soCodes, &pCodes;
 };
 
 
@@ -152,6 +153,13 @@ BinaryTriples::Address BinaryTriples::level3For12(const BinaryCode& l1, const Bi
     return invalid;
 }
 
+BinaryTriples::~BinaryTriples()
+{
+    delete []level1;
+    delete []level2;
+    delete []level3;
+}
+
 void BinaryTriples::fill(Triples& triples)
 {
     Stats soStats,pStats;
@@ -161,8 +169,8 @@ void BinaryTriples::fill(Triples& triples)
         pStats[t.p()]++;
         soStats[t.o()]++;
     }
-    soCodes=new Codes(soStats);
-    pCodes=new Codes(pStats);
+    soCodes.fill(soStats);
+    pCodes.fill(pStats);
     std::sort(triples.begin(), triples.end(), TriplesComparator(soCodes, pCodes));
     level1=new uint8_t[(4+sizeof(size_t))*pStats.size()];
     memset(level1, 0, (4+sizeof(size_t))*pStats.size());
@@ -174,9 +182,9 @@ void BinaryTriples::fill(Triples& triples)
     BinaryCode prevP,prevO;
     for(auto t:triples)
     {
-        BinaryCode s((*soCodes)[t.s()]);
-        BinaryCode p((*pCodes)[t.p()]);
-        BinaryCode o((*soCodes)[t.o()]);
+        BinaryCode s(soCodes[t.s()]);
+        BinaryCode p(pCodes[t.p()]);
+        BinaryCode o(soCodes[t.o()]);
         if(prevP!=p)
         {
             std::cout<<t.p()<<" "<<p<<"\n";
@@ -313,7 +321,7 @@ std::deque<BinaryCode> intersect(const A& a, const B& b)
     return result;
 }
 
-std::deque<BinaryCode> flatten(AbstractIterator *i)
+std::deque<BinaryCode> flatten(PAbstractIterator i)
 {    
     std::deque<BinaryCode> result;
     if(i!=NULL)
@@ -326,63 +334,22 @@ std::deque<BinaryCode> flatten(AbstractIterator *i)
     return result;
 }
 
-//polega na posortowaniu, a DoubleIterator tego nie zapewnia
-template<bool i,bool j>
-std::deque<BinaryCode> intersect(Iterator<i>* a, Iterator<j>* b)
-{
-    std::deque<BinaryCode> result;
-    BinaryCode aVal=a->next();
-    BinaryCode bVal=b->next();
-    for(;;)
-    {
-        bool aInc=false;
-        bool bInc=false;
-        int c=compare(aVal,bVal);
-        std::cout<<aVal<<" "<<bVal<<" "<<c<<"\n";
-        if(c<0)
-            aInc=true;
-        else if(c>0)
-            bInc=true;
-        else
-        {
-            aInc=true;
-            bInc=true;
-            result.push_back(aVal);
-        }
-        if(aInc)
-        {
-            if(a->hasNext())
-                aVal=a->next();
-            else
-                break;
-        }
-        if(bInc)
-        {
-            if(b->hasNext())
-                bVal=b->next();
-            else
-                break;
-        }
-    }
-    return result;
-}
-
-AbstractIterator* BinaryTriples::iteratorForQuery(const TreePattern::Node* query) const
+PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query) const
 {
     assert(query->children().empty());
-    BinaryCode p=(*pCodes)[query->parentProperty()];
+    BinaryCode p=pCodes[query->parentProperty()];
     if(query->isDefined())
     {
-        BinaryCode o=(*soCodes)[query->label()];
+        BinaryCode o=soCodes[query->label()];
         Address a=level3For12(p, o);
         if(a!=invalid)
-            return new Iterator<false>(level3, a);
+            return PAbstractIterator(new Iterator<false>(level3, a));
     }
     else
     {
         Address a=level2For1(p);
         if(a!=invalid)
-            return new DoubleIterator(level2, a, level3);
+            return PAbstractIterator(new DoubleIterator(level2, a, level3));
     }
     return NULL;
 }
@@ -402,14 +369,14 @@ std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query
         }
         if(!query->isRoot())
         {
-            BinaryCode p=(*pCodes)[query->parentProperty()];
+            BinaryCode p=pCodes[query->parentProperty()];
             std::deque<BinaryCode> result;
             for(auto o:subjects)
             {
-                auto i=new Iterator<false>(level3, level3For12(p, o));
-                while(i->hasNext())
+                auto i=Iterator<false>(level3, level3For12(p, o));
+                while(i.hasNext())
                 {
-                    BinaryCode s=i->next();
+                    BinaryCode s=i.next();
                     result.push_back(s);
                 }
             }
@@ -426,6 +393,6 @@ std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) co
     std::deque<BinaryCode> codes=answerCodes(query);
     std::deque<std::string> result;
     for(auto b:codes)
-        result.push_back(soCodes->decode(b));
+        result.push_back(soCodes.decode(b));
     return result;
 }

@@ -5,6 +5,9 @@
 #include "Compressor.hpp"
 #include "TreePattern.hpp"
 #include <cstdint>
+#include <memory>
+
+typedef std::unique_ptr<class AbstractIterator> PAbstractIterator;
 
 class BinaryTriples
 {
@@ -14,16 +17,17 @@ class BinaryTriples
 		void fill(Triples& triples);
         std::deque<std::string> answer(const TreePattern::Node* query) const;
         bool ask(const TreePattern::Node* query, const BinaryCode& s) const;
+        ~BinaryTriples();
 	private:        
         const uint8_t* find(const uint8_t* where, size_t n, uint32_t value, uint8_t length, bool index) const;
         Address level2For1(const BinaryCode& p) const;
         Address level3For2(const Address& a, const BinaryCode& s) const;
         Address level3For12(const BinaryCode& l1, const BinaryCode& l2) const;
-        class AbstractIterator* iteratorForQuery(const TreePattern::Node* query) const;
+        PAbstractIterator iteratorForQuery(const TreePattern::Node* query) const;
         std::deque<BinaryCode> answerCodes(const TreePattern::Node* query) const;
 
 
-        Codes *soCodes,*pCodes;
+        Codes soCodes,pCodes;
 		//id[1-4 bajty],pozycja w subjects[4 bajty]
         uint8_t *level1;
         size_t len1;
