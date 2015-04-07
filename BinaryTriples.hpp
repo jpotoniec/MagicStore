@@ -6,6 +6,7 @@
 #include "TreePattern.hpp"
 #include <cstdint>
 #include <memory>
+#include <fstream>
 
 typedef std::unique_ptr<class AbstractIterator> PAbstractIterator;
 
@@ -18,6 +19,8 @@ class BinaryTriples
         std::deque<std::string> answer(const TreePattern::Node* query) const;
         bool ask(const TreePattern::Node* query, const BinaryCode& s) const;
         ~BinaryTriples();
+        void save(std::ofstream& f) const;
+        void load(std::ifstream& file);
 	private:        
         const uint8_t* find(const uint8_t* where, size_t n, uint32_t value, uint8_t length, bool index) const;
         Address level2For1(const BinaryCode& p) const;

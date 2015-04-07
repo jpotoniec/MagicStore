@@ -7,6 +7,7 @@
 #include <cassert>
 #include <memory>
 #include <unordered_set>
+#include <iosfwd>
 
 class Node
 {
@@ -47,9 +48,15 @@ class Node
         {
             ++occurences;
         }
+        static Node* load(std::ifstream& f)
+        {
+            return new Node(f);
+        }
+        void save(std::ofstream& f) const;
     private:
+        Node(std::ifstream& f);
 		std::string label;
-		int occurences;
+        size_t occurences;
 		const Node *left,*right;
 };
 
@@ -163,6 +170,8 @@ class Codes : private boost::noncopyable
         {
             return valToCode.size();
         }
+        void load(std::ifstream& f);
+        void save(std::ofstream& f) const;
 	private:
 		void MakeCode(const Node *root, const BinaryCode& prefix);
 		std::map<std::string,BinaryCode> valToCode;

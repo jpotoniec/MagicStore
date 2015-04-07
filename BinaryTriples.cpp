@@ -160,6 +160,33 @@ BinaryTriples::~BinaryTriples()
     delete []level3;
 }
 
+void BinaryTriples::save(std::ofstream& f) const
+{
+    soCodes.save(f);
+    pCodes.save(f);
+    f.write(reinterpret_cast<const char*>(&len1), sizeof(len1));
+    f.write(reinterpret_cast<const char*>(level1), len1);
+    f.write(reinterpret_cast<const char*>(&len2), sizeof(len2));
+    f.write(reinterpret_cast<const char*>(level2), len2);
+    f.write(reinterpret_cast<const char*>(&len3), sizeof(len3));
+    f.write(reinterpret_cast<const char*>(level3), len3);
+}
+
+void BinaryTriples::load(std::ifstream& f)
+{
+    soCodes.load(f);
+    pCodes.load(f);
+    f.read(reinterpret_cast<char*>(&len1), sizeof(len1));
+    level1=new uint8_t[len1];
+    f.read(reinterpret_cast<char*>(level1), len1);
+    f.read(reinterpret_cast<char*>(&len2), sizeof(len2));
+    level2=new uint8_t[len2];
+    f.read(reinterpret_cast<char*>(level2), len2);
+    f.read(reinterpret_cast<char*>(&len3), sizeof(len3));
+    level3=new uint8_t[len3];
+    f.read(reinterpret_cast<char*>(level3), len3);
+}
+
 void BinaryTriples::fill(Triples& triples)
 {
     for(auto t:triples)
