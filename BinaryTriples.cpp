@@ -205,7 +205,8 @@ void BinaryTriples::fill(Triples& triples)
     len2=0;
     level3=new uint8_t[4*triples.size()];
     len3=0;
-    BinaryCode prevP,prevO;
+    BinaryCode prevP(std::numeric_limits<uint32_t>::max(), 30);
+    BinaryCode prevO(prevP);
     for(auto t:triples)
     {
         BinaryCode s(soCodes[t.s()]);
