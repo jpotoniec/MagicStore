@@ -27,11 +27,23 @@ void Codes::MakeCode(const Node *root, const BinaryCode& prefix)
 	}
 }
 
-void Codes::fill(const std::map<std::string,int>& stats)
+void Codes::inc(const std::string &label)
+{
+    Node *n=input[label];
+    if(n==NULL)
+    {
+        n=new Node(label,0);
+        input[label]=n;
+    }
+    n->inc();
+}
+
+void Codes::compress()
 {
 	std::priority_queue<Node*,std::deque<Node*>,NodesOrder> nodes;
-	for(auto i:stats)
-		nodes.push(new Node(i.first, i.second));    
+    for(auto i:input)
+        nodes.push(i.second);
+    input.clear();
 	for(;;)
 	{
         assert(!nodes.empty());

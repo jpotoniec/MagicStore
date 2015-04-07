@@ -162,20 +162,19 @@ BinaryTriples::~BinaryTriples()
 
 void BinaryTriples::fill(Triples& triples)
 {
-    Stats soStats,pStats;
     for(auto t:triples)
     {
-        soStats[t.s()]++;
-        pStats[t.p()]++;
-        soStats[t.o()]++;
+        soCodes.inc(t.s());
+        pCodes.inc(t.p());
+        soCodes.inc(t.o());
     }
-    soCodes.fill(soStats);
-    pCodes.fill(pStats);
+    soCodes.compress();
+    pCodes.compress();
     std::sort(triples.begin(), triples.end(), TriplesComparator(soCodes, pCodes));
-    level1=new uint8_t[(4+sizeof(size_t))*pStats.size()];
-    memset(level1, 0, (4+sizeof(size_t))*pStats.size());
+    level1=new uint8_t[(4+sizeof(size_t))*pCodes.size()];
+    memset(level1, 0, (4+sizeof(size_t))*pCodes.size());
     len1=0;
-    level2=new uint8_t[(4+sizeof(size_t))*pStats.size()*soStats.size()];
+    level2=new uint8_t[(4+sizeof(size_t))*pCodes.size()*soCodes.size()];
     len2=0;
     level3=new uint8_t[4*triples.size()];
     len3=0;

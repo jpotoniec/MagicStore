@@ -42,7 +42,11 @@ class Node
             if(right)
                 delete right;
         }
-	private:
+        void inc()
+        {
+            ++occurences;
+        }
+    private:
 		std::string label;
 		int occurences;
 		const Node *left,*right;
@@ -128,7 +132,6 @@ class Codes : private boost::noncopyable
             }
             return n->getLabel();
         }
-        void fill(const std::map<std::string,int>& stats);
         Codes()
             :root(NULL)
         {
@@ -139,10 +142,17 @@ class Codes : private boost::noncopyable
             if(root)
                 delete root;
         }
+        void inc(const std::string& label);
+        void compress();
+        size_t size() const
+        {
+            return valToCode.size();
+        }
 	private:
 		void MakeCode(const Node *root, const BinaryCode& prefix);
 		std::map<std::string,BinaryCode> valToCode;
 		Node *root;
+        std::map<std::string,Node*> input;
 };
 
 #endif //COMPRESSORHPP
