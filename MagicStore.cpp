@@ -85,6 +85,134 @@ Triples parseSparql(const std::string& sparql)
     return result;
 }
 
+typedef std::unique_ptr<BinaryTriples> PBinaryTriples;
+
+PBinaryTriples LoadDir(const std::string& dirname, PCodes soCodes, PCodes pCodes, const std::string& format)
+{
+    DIR *d=opendir(dirname.c_str());
+    dirent *de;
+    PBinaryTriples result;
+    while((de=readdir(d))!=NULL)
+    {
+        std::string file(de->d_name);
+        file=dirname+"/"+file;
+        if(file.find(".owl")==file.length()-4)
+        {
+            Triples triples;
+            std::cout<<"Loading "<<file<<std::endl;
+            LoadTriples(file, [&triples](const Triple& t)->void {triples.push_back(t);}, format);
+            if(result!=NULL)
+            {
+                BinaryTriples bt;
+                bt.fill(soCodes,pCodes,triples);
+                PBinaryTriples x(new BinaryTriples());
+                x->merge(*result, bt);
+                result=std::move(x);
+            }
+            else
+            {
+                result=PBinaryTriples(new BinaryTriples());
+                result->fill(soCodes,pCodes,triples);
+            }
+        }
+    }
+    closedir(d);
+    return result;
+}
+
+class Adder
+{
+public:
+    void operator()(int x)
+    {
+//        std::cout<<x<<"\n";
+        if(i==end)
+            throw std::runtime_error("Did not expect anything, got "+std::to_string(x));
+        if(x!=*i)
+            throw std::runtime_error("Expected "+std::to_string(*i)+", got "+std::to_string(x));
+        i++;
+    }
+    explicit Adder(const std::deque<int>& c)
+        :i(c.cbegin()),end(c.cend())
+    {
+
+    }
+    ~Adder()
+    {
+        if(i!=end)
+            throw std::runtime_error("Finished before "+std::to_string(*i));
+    }
+private:
+    std::deque<int>::const_iterator i,end;
+};
+
+#include "Merger.hpp"
+void testMerge()
+{
+    std::deque<int>
+            a({1,2,3}),
+            b({4,5,6}),
+            c({1,2,3,4,5,6}),
+            d({1,3,5}),
+            e({2,4,6}),
+            f({2,4,5,6}),
+            g({4,6}),
+            h({1,2,3,4,5});
+    auto comparator=[](int x,int y)->int{return x-y;};
+    merge<int>(JavaIterator<int>(a),
+          JavaIterator<int>(b),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(b),
+          JavaIterator<int>(a),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(a),
+          JavaIterator<int>(c),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(c),
+          JavaIterator<int>(a),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(d),
+          JavaIterator<int>(e),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(e),
+          JavaIterator<int>(d),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(a),
+          JavaIterator<int>(a),
+          Adder(a),
+          comparator);
+    merge<int>(JavaIterator<int>(a),
+          JavaIterator<int>(f),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(f),
+          JavaIterator<int>(a),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(c),
+          JavaIterator<int>(g),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(g),
+          JavaIterator<int>(c),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(h),
+          JavaIterator<int>(g),
+          Adder(c),
+          comparator);
+    merge<int>(JavaIterator<int>(g),
+          JavaIterator<int>(h),
+          Adder(c),
+          comparator);
+}
+
 int main(int argc, char **argv)
 {
 #if 1
@@ -99,7 +227,6 @@ int main(int argc, char **argv)
 #else
     auto query=TreePattern::Node::fromTriples(parseSparql("?x a ub:GraduateStudent; ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>."));
 #endif
-	Triples triples;
 #if 0
 	for(int i=1;i<argc;i++)
 	{
@@ -107,12 +234,29 @@ int main(int argc, char **argv)
 		LoadTriples(argv[i], triples);
 	}
 #endif
-    LoadDir("lubm", [&triples](const Triple& t)->void {triples.push_back(t);});
-	std::cout<<"# of triples"<<triples.size()<<"\n";
-	BinaryTriples bt;
-	bt.fill(triples);
+    PBinaryTriples bt;
+#if 1
+    PCodes soCodes(new Codes());
+    PCodes pCodes(new Codes());
+    LoadDir("lubm", [&soCodes,&pCodes](const Triple& t)->void {
+        soCodes->inc(t.s());
+        pCodes->inc(t.p());
+        soCodes->inc(t.o());
+    }, "rdfxml");
+    soCodes->compress();
+    pCodes->compress();
+    bt=LoadDir("lubm", soCodes, pCodes, "rdfxml");
+    std::ofstream f("lubm.bin");
+    bt->save(f);
+    f.close();
+#else
+    bt=new BinaryTriples();
+    std::ifstream f("lubm.bin");
+    bt->load(f);
+    f.close();
+#endif
     query->dump(std::cout);
-    auto result=bt.answer(query);
+    auto result=bt->answer(query);
     for(auto i:result)
         std::cout<<i<<"\n";
     std::cout<<"# of rows: "<<result.size()<<std::endl;

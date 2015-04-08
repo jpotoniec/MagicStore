@@ -15,5 +15,6 @@ include(deployment.pri)
 qtcAddDeployment()
 
 HEADERS += \
-    BinaryTriples.hpp BinaryTriples.hpp  Compressor.hpp    TreePattern.hpp  Triple.hpp
+    BinaryTriples.hpp BinaryTriples.hpp  Compressor.hpp    TreePattern.hpp  Triple.hpp \
+    Merger.hpp
 

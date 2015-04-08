@@ -7,17 +7,22 @@
 #include <cstdint>
 #include <memory>
 #include <fstream>
+#include <boost/noncopyable.hpp>
 
 typedef std::unique_ptr<class AbstractIterator> PAbstractIterator;
 
-class BinaryTriples
+class BinaryTriple;
+
+class BinaryTriples : private boost::noncopyable
 {
 	public:
         typedef std::pair<size_t,size_t> Address;
-        static const std::pair<size_t,size_t> invalid;
-		void fill(Triples& triples);
+        static const std::pair<size_t,size_t> invalid;        
+        void fill(PCodes soCodes, PCodes pCodes,Triples& triples);
+        void merge(const BinaryTriples& a, const BinaryTriples& b);
         std::deque<std::string> answer(const TreePattern::Node* query) const;
         bool ask(const TreePattern::Node* query, const BinaryCode& s) const;
+        BinaryTriples();
         ~BinaryTriples();
         void save(std::ofstream& f) const;
         void load(std::ifstream& file);
@@ -28,9 +33,14 @@ class BinaryTriples
         Address level3For12(const BinaryCode& l1, const BinaryCode& l2) const;
         PAbstractIterator iteratorForQuery(const TreePattern::Node* query) const;
         std::deque<BinaryCode> answerCodes(const TreePattern::Node* query) const;
+        void add(const BinaryCode& s, const BinaryCode& p, const BinaryCode& o);
+        void add(const BinaryTriple& t);
+        void finish();
+        void dump(const BinaryTriple& t) const;
 
+        friend class TripleIterator;
 
-        Codes soCodes,pCodes;
+        PCodes soCodes,pCodes;
 		//id[1-4 bajty],pozycja w subjects[4 bajty]
         uint8_t *level1;
         size_t len1;
@@ -40,6 +50,7 @@ class BinaryTriples
 		//id[1-4 bajty]
         uint8_t *level3;
         size_t len3;
+        BinaryCode prevP,prevO;
 };
 
 #endif //BINARYTRIPLESHPP

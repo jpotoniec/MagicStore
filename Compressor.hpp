@@ -75,10 +75,16 @@ private:
     std::hash<std::string> hasher;
 };
 
+#include <limits>
+
 template<typename T>
 class TBinaryCode
 {
 	public:
+        static TBinaryCode<T> invalid()
+        {
+            return TBinaryCode(std::numeric_limits<T>::max(), sizeof(T)*8-2);
+        }
 		T value() const {return val;}
 		uint8_t length() const {return len;}
 		void append(bool v)
@@ -107,19 +113,21 @@ class TBinaryCode
         friend bool operator<(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
         {
             return compare(a,b)<0;
-        }
-        friend int compare(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-        {
-            if(a.val<b.val)
-                return -1;
-            else if(a.val>b.val)
-                return 1;
-            return 0;
-        }
+        }        
 	private:
 		T val;
 		uint8_t len;
 };
+
+template<typename T>
+int compare(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
+{
+    if(a.value()<b.value())
+        return -1;
+    else if(a.value()>b.value())
+        return 1;
+    return 0;
+}
 
 #include <iostream>
 template<typename T>
@@ -178,5 +186,7 @@ class Codes : private boost::noncopyable
 		Node *root;
         std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
 };
+
+typedef std::shared_ptr<Codes> PCodes;
 
 #endif //COMPRESSORHPP

@@ -57,7 +57,7 @@ void Codes::compress()
 		nodes.pop();        
 		nodes.push(new Node("",l->getOccurences()+r->getOccurences(),l,r));
 	}
-	MakeCode(root, BinaryCode());
+    MakeCode(root, BinaryCode());
 }
 
 void Codes::load(std::ifstream& f)

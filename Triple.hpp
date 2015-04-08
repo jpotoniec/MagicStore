@@ -79,7 +79,7 @@ void LoadTriples(const std::string& file, T fun, const std::string& format="rdfx
 }
 
 template<typename T>
-void LoadDir(const std::string& dirname, T fun)
+void LoadDir(const std::string& dirname, T fun, const std::string& format)
 {
     DIR *d=opendir(dirname.c_str());
     dirent *de;
@@ -88,7 +88,7 @@ void LoadDir(const std::string& dirname, T fun)
         std::string file(de->d_name);
         file=dirname+"/"+file;
         if(file.find(".owl")==file.length()-4)
-            LoadTriples(file, fun);
+            LoadTriples(file, fun, format);
     }
     closedir(d);
 }
