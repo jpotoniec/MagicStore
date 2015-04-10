@@ -501,18 +501,6 @@ std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query
 std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) const
 {
     TripleIterator t(*this);
-    size_t n=0,m=0,x=0;
-    while(t.hasNext())
-    {
-        t.next();
-        ++n;
-    }
-    while(x<len3)
-    {
-        skip(level3,x);
-        m++;
-    }
-    std::cout<<"n="<<n<<" m="<<m<<std::endl;
     std::deque<BinaryCode> codes=answerCodes(query);
     std::deque<std::string> result;
     for(auto b:codes)
