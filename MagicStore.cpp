@@ -327,7 +327,7 @@ int main(int argc, char **argv)
             LoadTriples(argv[i], loader, format);
         }
         PBinaryTriples bt=loader.result();
-        std::ofstream f(argv[2]);
+        std::ofstream f(argv[3]);
         bt->save(f);
         f.close();
     }
@@ -340,24 +340,10 @@ int main(int argc, char **argv)
         auto query=TreePattern::Node::fromTriples(parseSparql(argv[3]));
         query->dump(std::cout);
         auto result=bt.answer(query);
-#if 0
-        for(auto i:result)
-            std::cout<<i<<"\n";
-#endif
+        if(result.size()<100)
+            for(auto i:result)
+                std::cout<<i<<"\n";
         std::cout<<"# of rows: "<<result.size()<<std::endl;
     }
     return 0;
-#if 1
-    auto query=TreePattern::Node::fromTriples(parseSparql(std::string()
-                                                          +"?x a ub:GraduateStudent;"
-                                                          +"   ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>;"+
-                                                          +"   ub:advisor ?y."
-                                                          +"?y a ub:AssociateProfessor;"
-                                                          +"   ub:teacherOf ?z."
-                                                          +"?z a ub:GraduateCourse."
-                                                          ));    
-#else
-    auto query=TreePattern::Node::fromTriples(parseSparql("?x a ub:GraduateStudent; ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>."));
-#endif
-	return 0;
 }

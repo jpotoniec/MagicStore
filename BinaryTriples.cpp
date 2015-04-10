@@ -221,12 +221,30 @@ void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triple
     this->soCodes=soCodes;
     this->pCodes=pCodes;
     std::sort(triples.begin(), triples.end());
-    level1=new uint8_t[(4+sizeof(size_t))*pCodes->size()];
-    memset(level1, 0, (4+sizeof(size_t))*pCodes->size());
+    size_t psize=0,osize=0,ssize=0;
+    BinaryCode p(BinaryCode::invalid()),o(BinaryCode::invalid());
+    for(auto t:triples)
+    {
+        if(p!=t.p())
+        {
+            psize++;
+            p=t.p();
+            o=BinaryCode::invalid();
+        }
+        if(o!=t.o())
+        {
+            osize++;
+            o=t.o();
+        }
+    }
+    psize*=(4+sizeof(size_t));
+    osize*=(4+sizeof(size_t));
+    ssize=4*triples.size();
+    level1=new uint8_t[psize];
     len1=0;
-    level2=new uint8_t[(4+sizeof(size_t))*pCodes->size()*soCodes->size()];
+    level2=new uint8_t[osize];
     len2=0;
-    level3=new uint8_t[4*triples.size()];
+    level3=new uint8_t[ssize];
     len3=0;
     for(auto t:triples)
     {
