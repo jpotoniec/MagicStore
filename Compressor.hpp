@@ -75,80 +75,13 @@ private:
     std::hash<std::string> hasher;
 };
 
-#include <limits>
-
-template<typename T>
-class TBinaryCode
-{
-	public:
-        static TBinaryCode<T> invalid()
-        {
-            return TBinaryCode(std::numeric_limits<T>::max(), sizeof(T)*8-2);
-        }
-		T value() const {return val;}
-		uint8_t length() const {return len;}
-		void append(bool v)
-		{
-			assert(len<sizeof(val)*8);			
-			if(v)
-                val|=(1<<len);
-			len++;
-		}
-		TBinaryCode(T val, uint8_t len)
-			:val(val),len(len)
-		{
-		}
-		TBinaryCode()
-			:TBinaryCode(0,0)
-		{
-		}
-		friend bool operator==(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-		{
-            return a.val==b.val;
-		}
-		friend bool operator!=(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-		{
-			return !(a==b);
-		}
-        friend bool operator<(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-        {
-            return compare(a,b)<0;
-        }        
-	private:
-		T val;
-		uint8_t len;
-};
-
-template<typename T>
-int compare(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-{
-    if(a.value()<b.value())
-        return -1;
-    else if(a.value()>b.value())
-        return 1;
-    return 0;
-}
-
-#include <iostream>
-template<typename T>
-std::ostream& operator<<(std::ostream& o, const TBinaryCode<T>& c)
-{
-    return o<<std::hex<<c.value()<<"/"<<std::dec<<static_cast<uint32_t>(c.length());
-}
-
-typedef TBinaryCode<uint32_t> BinaryCode;
-
 class Codes : private boost::noncopyable
 {
 	public:
-		const BinaryCode& operator[](const std::string& value) const
+        uint32_t operator[](const std::string& value) const
 		{
 			return valToCode.find(value)->second;
 		}
-        const std::string& decode(const BinaryCode& code) const
-        {
-            return decode(code.value());
-        }
         const std::string& decode(uint32_t code) const
         {
             const Node *n=root;
@@ -181,8 +114,8 @@ class Codes : private boost::noncopyable
         void load(std::ifstream& f);
         void save(std::ofstream& f) const;
 	private:
-		void MakeCode(const Node *root, const BinaryCode& prefix);
-		std::map<std::string,BinaryCode> valToCode;
+        void MakeCode(const Node *root, uint32_t prefix, uint8_t len=0);
+        std::map<std::string,uint32_t> valToCode;
 		Node *root;
         std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
 };

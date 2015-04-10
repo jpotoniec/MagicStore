@@ -13,18 +13,17 @@ class NodesOrder
 		}
 };
 
-void Codes::MakeCode(const Node *root, const BinaryCode& prefix)
+void Codes::MakeCode(const Node *root, uint32_t prefix, uint8_t len)
 {
+    assert(len<=30);
 	if(root!=NULL)
 	{
 		if(!root->getLabel().empty())
-			valToCode[root->getLabel()]=prefix;
-		BinaryCode lcode(prefix);
-		lcode.append(false);
-		BinaryCode rcode(prefix);
-		rcode.append(true);
-		MakeCode(root->getLeft(),lcode);
-		MakeCode(root->getRight(),rcode);
+            valToCode[root->getLabel()]=prefix;
+        uint32_t lcode(prefix);
+        uint32_t rcode(prefix|(1<<len));
+        MakeCode(root->getLeft(),lcode,len+1);
+        MakeCode(root->getRight(),rcode,len+1);
 	}
 }
 
@@ -57,13 +56,13 @@ void Codes::compress()
 		nodes.pop();        
 		nodes.push(new Node("",l->getOccurences()+r->getOccurences(),l,r));
 	}
-    MakeCode(root, BinaryCode());
+    MakeCode(root, 0);
 }
 
 void Codes::load(std::ifstream& f)
 {
     root=Node::load(f);
-    MakeCode(root, BinaryCode());
+    MakeCode(root, 0);
 }
 
 void Codes::save(std::ofstream& f) const

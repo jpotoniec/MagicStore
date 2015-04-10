@@ -11,24 +11,33 @@
 
 typedef std::unique_ptr<class AbstractIterator> PAbstractIterator;
 
+inline int compare(uint32_t a, uint32_t b)
+{
+    if(a<b)
+        return -1;
+    else if(a>b)
+        return 1;
+    else
+        return 0;
+}
 
 class BinaryTriple
 {
 public:
-    BinaryTriple(const BinaryCode& s,const BinaryCode& p, const BinaryCode& o)
+    BinaryTriple(uint32_t s,uint32_t p, uint32_t o)
         :_s(s),_p(p),_o(o)
     {
 
     }
-    const BinaryCode& s() const
+    uint32_t s() const
     {
         return _s;
     }
-    const BinaryCode& p() const
+    uint32_t p() const
     {
         return _p;
     }
-    const BinaryCode& o() const
+    uint32_t o() const
     {
         return _o;
     }
@@ -48,7 +57,7 @@ public:
         return BinaryTriple::compare(a,b)<0;
     }
 private:
-    BinaryCode _s,_p,_o;
+    uint32_t _s,_p,_o;
 };
 
 typedef std::deque<BinaryTriple> RawBinaryTriples;
@@ -63,7 +72,7 @@ class BinaryTriples : private boost::noncopyable
         void fill(PCodes soCodes, PCodes pCodes,RawBinaryTriples& triples);
         void merge(const BinaryTriples& a, const BinaryTriples& b);
         std::deque<std::string> answer(const TreePattern::Node* query) const;
-        bool ask(const TreePattern::Node* query, const BinaryCode& s) const;
+        bool ask(const TreePattern::Node* query, uint32_t s) const;
         BinaryTriples();
         ~BinaryTriples();
         void save(std::ofstream& f) const;
@@ -74,7 +83,7 @@ class BinaryTriples : private boost::noncopyable
         Address level3For12(uint32_t l1, uint32_t l2) const;
         PAbstractIterator iteratorForQuery(const TreePattern::Node* query) const;
         std::deque<uint32_t> answerCodes(const TreePattern::Node* query) const;
-        void add(const BinaryCode& s, const BinaryCode& p, const BinaryCode& o);
+        void add(uint32_t s, uint32_t p, uint32_t o);
         void add(const BinaryTriple& t);
         void finish();
         void dump(const BinaryTriple& t) const;
@@ -91,7 +100,7 @@ class BinaryTriples : private boost::noncopyable
 		//id[1-4 bajty]
         uint8_t *level3;
         size_t len3;
-        BinaryCode prevP,prevO;
+        uint32_t prevP,prevO;
 };
 
 #endif //BINARYTRIPLESHPP

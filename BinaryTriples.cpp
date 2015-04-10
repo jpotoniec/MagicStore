@@ -21,12 +21,9 @@ static inline uint8_t len(uint32_t value)
         return 3;
 }
 
-static void write(uint8_t *where, size_t &wlen, const BinaryCode& c)
+static void write(uint8_t *where, size_t &wlen, uint32_t val)
 {
-    assert(c.length()<=30);
-    size_t _len=len(c.value());
-    //std::cout<<"For "<<static_cast<uint32_t>(c.length())<<" needed is "<<(len+1)<<" bytes\n";
-    uint32_t val=c.value();
+    size_t _len=len(val);
     switch(_len)
     {
         case 3:
@@ -133,7 +130,7 @@ BinaryTriples::Address BinaryTriples::level3For12(uint32_t l1, uint32_t l2) cons
 }
 
 BinaryTriples::BinaryTriples()
-    :prevP(BinaryCode::invalid()),prevO(BinaryCode::invalid())
+    :prevP(std::numeric_limits<uint32_t>::max()),prevO(std::numeric_limits<uint32_t>::max())
 {
 }
 
@@ -174,7 +171,7 @@ void BinaryTriples::load(std::ifstream& f)
     std::cout<<"Loaded binary blobs of sizes "<<len1<<"+"<<len2<<"+"<<len3<<" bytes"<<std::endl;
 }
 
-void BinaryTriples::add(const BinaryCode& s, const BinaryCode& p, const BinaryCode& o)
+void BinaryTriples::add(uint32_t s, uint32_t p, uint32_t o)
 {
     if(prevP!=p)
     {
@@ -182,7 +179,7 @@ void BinaryTriples::add(const BinaryCode& s, const BinaryCode& p, const BinaryCo
         write(level1, len1, p);
         memcpy(level1+len1, &len2, sizeof(len2));
         len1+=sizeof(len2);
-        prevO=BinaryCode::invalid();
+        prevO=std::numeric_limits<uint32_t>::max();
     }
     if(prevO!=o)
     {
@@ -200,14 +197,14 @@ void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triple
     this->pCodes=pCodes;
     std::sort(triples.begin(), triples.end());
     size_t psize=0,osize=0,ssize=0;
-    BinaryCode p(BinaryCode::invalid()),o(BinaryCode::invalid());
+    uint32_t p(std::numeric_limits<uint32_t>::max()),o(std::numeric_limits<uint32_t>::max());
     for(auto t:triples)
     {
         if(p!=t.p())
         {
             psize++;
             p=t.p();
-            o=BinaryCode::invalid();
+            o=std::numeric_limits<uint32_t>::max();
         }
         if(o!=t.o())
         {
@@ -234,9 +231,9 @@ void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triple
 
 void BinaryTriples::finish()
 {
-    write(level1, len1, BinaryCode::invalid());
+    write(level1, len1, std::numeric_limits<uint32_t>::max());
     memcpy(level1+len1, &len2, sizeof(len2));
-    write(level2, len2, BinaryCode::invalid());
+    write(level2, len2, std::numeric_limits<uint32_t>::max());
     memcpy(level2+len2, &len3, sizeof(len3));
 }
 
@@ -350,7 +347,7 @@ public:
     BinaryTriple next()
     {
         uint32_t l3=read(bt.level3, p3);
-        BinaryTriple result(BinaryCode(l3,len(l3)),BinaryCode(l1,len(l1)),BinaryCode(l2,len(l2)));
+        BinaryTriple result(l3,l1,l2);
 //        std::cout<<"p: "<<p3<<" "<<p2<<" "<<p1<<" n: "<<n3<<" "<<n2<<" inf\n";
         if(p3==n3)
         {
@@ -424,17 +421,17 @@ std::deque<uint32_t> flatten(PAbstractIterator i)
 PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query) const
 {
     assert(query->children().empty());
-    BinaryCode p=(*pCodes)[query->parentProperty()];
+    uint32_t p=(*pCodes)[query->parentProperty()];
     if(query->isDefined())
     {
-        BinaryCode o=(*soCodes)[query->label()];
-        Address a=level3For12(p.value(), o.value());
+        uint32_t o=(*soCodes)[query->label()];
+        Address a=level3For12(p, o);
         if(a!=invalid)
             return PAbstractIterator(new Iterator<false>(level3, a));
     }
     else
     {
-        Address a=level2For1(p.value());
+        Address a=level2For1(p);
         if(a!=invalid)
             return PAbstractIterator(new DoubleIterator(level2, a, level3));
     }
@@ -456,7 +453,7 @@ std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) 
         }
         if(!query->isRoot())
         {
-            uint32_t p=(*pCodes)[query->parentProperty()].value();
+            uint32_t p=(*pCodes)[query->parentProperty()];
             std::deque<uint32_t> result;
             for(auto o:subjects)
             {
@@ -490,9 +487,9 @@ void BinaryTriples::add(const BinaryTriple& t)
 //    std::cout<<"Adding: ";
 //    dump(t);
     add(t.s(),t.p(),t.o());
-    assert(t.s()!=BinaryCode::invalid());
-    assert(t.p()!=BinaryCode::invalid());
-    assert(t.o()!=BinaryCode::invalid());
+    assert(t.s()!=std::numeric_limits<uint32_t>::max());
+    assert(t.p()!=std::numeric_limits<uint32_t>::max());
+    assert(t.o()!=std::numeric_limits<uint32_t>::max());
 }
 
 void BinaryTriples::dump(const BinaryTriple& t) const
