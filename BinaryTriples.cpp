@@ -51,13 +51,13 @@ void write(uint8_t *where, size_t &wlen, const BinaryCode& c)
     wlen+=len+1;
 }
 
-void skip(const uint8_t *where, size_t &position)
+static inline void skip(const uint8_t *where, size_t &position)
 {
     uint8_t len=(((where[position])>>6)&0b11);
     position+=len+1;
 }
 
-BinaryCode read(const uint8_t *where, size_t &position)
+static inline BinaryCode read(const uint8_t *where, size_t &position)
 {
     uint8_t len=(((where[position])>>6)&0b11);
     uint32_t result=0;
@@ -80,31 +80,20 @@ const std::pair<size_t,size_t> BinaryTriples::invalid=std::pair<size_t,size_t>(s
 
 const uint8_t* BinaryTriples::find(const uint8_t* where, size_t n, uint32_t value, uint8_t length, bool index) const
 {
+    assert(index);
+    length=(length+1)/8;
     for(size_t i=0;i<n;i+=sizeof(size_t))
     {
-        BinaryCode c=read(where, i);
-        if(c.value()==value)
-            return where+i;
-        if(index)
+        uint8_t len=(((where[i])>>6)&0b11);
+        if(len==length)
         {
-            size_t pos;
-            memcpy(&pos, where+i, sizeof(size_t));
+            BinaryCode c=read(where, i);
+            if(c.value()==value)
+                return where+i;
         }
-    }
-#if 0
-#error Przedwczesna optymalizacja AKA nie działa
-    uint8_t len=(length-2)/8;
-    for(size_t i=0;i<n;)
-    {
-        uint8_t x=(where[i]>>6);
-        if(x==len && read(where,i).value()==value)
-            return where+i;
         else
-            i+=x;
-        if(index)
-            i+=sizeof(size_t);
+            i+=len+1;
     }
-#endif
     return NULL;
 }
 
