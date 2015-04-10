@@ -78,14 +78,21 @@ static inline BinaryCode read(const uint8_t *where, size_t &position)
 
 const std::pair<size_t,size_t> BinaryTriples::invalid=std::pair<size_t,size_t>(static_cast<size_t>(-1),static_cast<size_t>(-1));
 
-const uint8_t* BinaryTriples::find(const uint8_t* where, size_t n, uint32_t value, uint8_t length, bool index) const
+static const uint8_t* find(const uint8_t* where, size_t n, uint32_t value)
 {
-    assert(index);
-    length=(length+1)/8;
+    uint8_t length;
+    if(value<=0x3f)
+        length=0;
+    else if(value<=0x3fff)
+        length=1;
+    else if(value<=0x3fffff)
+        length=2;
+    else
+        length=3;
     for(size_t i=0;i<n;i+=sizeof(size_t))
     {
         uint8_t len=(((where[i])>>6)&0b11);
-        if(len==length)
+        if(len>=length)
         {
             BinaryCode c=read(where, i);
             if(c.value()==value)
@@ -97,9 +104,9 @@ const uint8_t* BinaryTriples::find(const uint8_t* where, size_t n, uint32_t valu
     return NULL;
 }
 
-BinaryTriples::Address BinaryTriples::level2For1(const BinaryCode& p) const
+BinaryTriples::Address BinaryTriples::level2For1(uint32_t p) const
 {
-    const uint8_t *ptr=find(level1, len1, p.value(), p.length(), true);
+    const uint8_t *ptr=find(level1, len1, p);
     if(ptr!=NULL)
     {
         size_t begin=*reinterpret_cast<const size_t*>(ptr);
@@ -117,10 +124,10 @@ BinaryTriples::Address BinaryTriples::level2For1(const BinaryCode& p) const
         return invalid;
 }
 
-BinaryTriples::Address BinaryTriples::level3For2(const Address& a, const BinaryCode& s) const
+BinaryTriples::Address BinaryTriples::level3For2(const Address& a, uint32_t s) const
 {
     size_t len=a.second-a.first;
-    const uint8_t *ptr=find(level2+a.first, len, s.value(), s.length(), true);
+    const uint8_t *ptr=find(level2+a.first, len, s);
     if(ptr!=NULL)
     {
         size_t begin=*reinterpret_cast<const size_t*>(ptr);
@@ -135,7 +142,7 @@ BinaryTriples::Address BinaryTriples::level3For2(const Address& a, const BinaryC
         return invalid;
 }
 
-BinaryTriples::Address BinaryTriples::level3For12(const BinaryCode& l1, const BinaryCode& l2) const
+BinaryTriples::Address BinaryTriples::level3For12(uint32_t l1, uint32_t l2) const
 {
     Address sa=level2For1(l1);
     if(sa!=invalid)
@@ -257,7 +264,7 @@ public:
     virtual ~AbstractIterator()
     {
     }
-    virtual BinaryCode next()=0;
+    virtual uint32_t next()=0;
     virtual bool hasNext() const=0;
     virtual bool isSorted() const
     {
@@ -273,9 +280,9 @@ public:
         :data(data),pos(a.first),end(a.second)
     {
     }
-    BinaryCode next()
+    uint32_t next()
     {
-        BinaryCode b=read(data, pos);
+        uint32_t b=read(data, pos).value();
         if(index)
             pos+=sizeof(size_t);
         return b;
@@ -304,9 +311,9 @@ public:
     {
         return b.hasNext();
     }
-    BinaryCode next()
+    uint32_t next()
     {
-        BinaryCode x=b.next();
+        uint32_t x=b.next();
         if(!b.hasNext() && pos<end)
         {
             size_t tmp=nextPos();
@@ -398,17 +405,16 @@ private:
 
 /// wymga, żeby oba argumenty były posortowane
 template<typename A,typename B>
-std::deque<BinaryCode> intersect(const A& a, const B& b)
+std::deque<uint32_t> intersect(const A& a, const B& b)
 {
-    std::deque<BinaryCode> result;
+    std::deque<uint32_t> result;
     auto i=a.begin();
     auto j=b.begin();
     while(i!=a.end() && j!=b.end())
-    {
-        int c=compare(*i,*j);
-        if(c<0)
+    {        
+        if(*i<*j)
             i++;
-        else if(c>0)
+        else if(*i>*j)
             j++;
         else
         {
@@ -420,9 +426,9 @@ std::deque<BinaryCode> intersect(const A& a, const B& b)
     return result;
 }
 
-std::deque<BinaryCode> flatten(PAbstractIterator i)
+std::deque<uint32_t> flatten(PAbstractIterator i)
 {    
-    std::deque<BinaryCode> result;
+    std::deque<uint32_t> result;
     if(i!=NULL)
     {
         while(i->hasNext())
@@ -440,26 +446,26 @@ PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query
     if(query->isDefined())
     {
         BinaryCode o=(*soCodes)[query->label()];
-        Address a=level3For12(p, o);
+        Address a=level3For12(p.value(), o.value());
         if(a!=invalid)
             return PAbstractIterator(new Iterator<false>(level3, a));
     }
     else
     {
-        Address a=level2For1(p);
+        Address a=level2For1(p.value());
         if(a!=invalid)
             return PAbstractIterator(new DoubleIterator(level2, a, level3));
     }
     return NULL;
 }
 
-std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query) const
+std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) const
 {
     if(query->children().empty())
         return flatten(iteratorForQuery(query));
     else
     {
-        std::deque<BinaryCode> subjects=answerCodes(query->children()[0].second);
+        std::deque<uint32_t> subjects=answerCodes(query->children()[0].second);
         for(int i=1;i<query->children().size();++i)
         {
             if(subjects.empty())
@@ -468,14 +474,14 @@ std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query
         }
         if(!query->isRoot())
         {
-            BinaryCode p=(*pCodes)[query->parentProperty()];
-            std::deque<BinaryCode> result;
+            uint32_t p=(*pCodes)[query->parentProperty()].value();
+            std::deque<uint32_t> result;
             for(auto o:subjects)
             {
                 auto i=Iterator<false>(level3, level3For12(p, o));
                 while(i.hasNext())
                 {
-                    BinaryCode s=i.next();
+                    uint32_t s=i.next();
                     result.push_back(s);
                 }
             }
@@ -490,7 +496,7 @@ std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query
 std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) const
 {
     TripleIterator t(*this);
-    std::deque<BinaryCode> codes=answerCodes(query);
+    std::deque<uint32_t> codes=answerCodes(query);
     std::deque<std::string> result;
     for(auto b:codes)
         result.push_back(soCodes->decode(b));

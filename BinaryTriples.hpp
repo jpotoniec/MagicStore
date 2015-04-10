@@ -68,13 +68,12 @@ class BinaryTriples : private boost::noncopyable
         ~BinaryTriples();
         void save(std::ofstream& f) const;
         void load(std::ifstream& file);
-	private:        
-        const uint8_t* find(const uint8_t* where, size_t n, uint32_t value, uint8_t length, bool index) const;
-        Address level2For1(const BinaryCode& p) const;
-        Address level3For2(const Address& a, const BinaryCode& s) const;
-        Address level3For12(const BinaryCode& l1, const BinaryCode& l2) const;
+	private:                
+        Address level2For1(uint32_t p) const;
+        Address level3For2(const Address& a, uint32_t s) const;
+        Address level3For12(uint32_t l1, uint32_t l2) const;
         PAbstractIterator iteratorForQuery(const TreePattern::Node* query) const;
-        std::deque<BinaryCode> answerCodes(const TreePattern::Node* query) const;
+        std::deque<uint32_t> answerCodes(const TreePattern::Node* query) const;
         void add(const BinaryCode& s, const BinaryCode& p, const BinaryCode& o);
         void add(const BinaryTriple& t);
         void finish();
