@@ -11,6 +11,48 @@
 
 typedef std::unique_ptr<class AbstractIterator> PAbstractIterator;
 
+
+class BinaryTriple
+{
+public:
+    BinaryTriple(const BinaryCode& s,const BinaryCode& p, const BinaryCode& o)
+        :_s(s),_p(p),_o(o)
+    {
+
+    }
+    const BinaryCode& s() const
+    {
+        return _s;
+    }
+    const BinaryCode& p() const
+    {
+        return _p;
+    }
+    const BinaryCode& o() const
+    {
+        return _o;
+    }
+    static int compare(const BinaryTriple& a, const BinaryTriple& b)
+    {
+        int pc=::compare(a.p(),b.p());
+        if(pc!=0)
+            return pc;
+        int oc=::compare(a.o(),b.o());
+        if(oc!=0)
+            return oc;
+        int sc=::compare(a.s(),b.s());
+        return sc;
+    }
+    friend bool operator<(const BinaryTriple& a, const BinaryTriple& b)
+    {
+        return BinaryTriple::compare(a,b)<0;
+    }
+private:
+    BinaryCode _s,_p,_o;
+};
+
+typedef std::deque<BinaryTriple> RawBinaryTriples;
+
 class BinaryTriple;
 
 class BinaryTriples : private boost::noncopyable
@@ -18,7 +60,7 @@ class BinaryTriples : private boost::noncopyable
 	public:
         typedef std::pair<size_t,size_t> Address;
         static const std::pair<size_t,size_t> invalid;        
-        void fill(PCodes soCodes, PCodes pCodes,Triples& triples);
+        void fill(PCodes soCodes, PCodes pCodes,RawBinaryTriples& triples);
         void merge(const BinaryTriples& a, const BinaryTriples& b);
         std::deque<std::string> answer(const TreePattern::Node* query) const;
         bool ask(const TreePattern::Node* query, const BinaryCode& s) const;

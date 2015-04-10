@@ -87,6 +87,7 @@ Triples parseSparql(const std::string& sparql)
 
 typedef std::unique_ptr<BinaryTriples> PBinaryTriples;
 
+#if 0
 PBinaryTriples LoadDir(const std::string& dirname, PCodes soCodes, PCodes pCodes, const std::string& format)
 {
     DIR *d=opendir(dirname.c_str());
@@ -119,6 +120,7 @@ PBinaryTriples LoadDir(const std::string& dirname, PCodes soCodes, PCodes pCodes
     closedir(d);
     return result;
 }
+#endif
 
 class Adder
 {
@@ -213,8 +215,138 @@ void testMerge()
           comparator);
 }
 
+class Loader
+{
+public:
+    Loader(PCodes soCodes,PCodes pCodes)
+        :soCodes(soCodes),pCodes(pCodes)
+    {
+
+    }
+
+    void operator()(const Triple& t)
+    {
+        triples.push_back(BinaryTriple((*soCodes)[t.s()], (*pCodes)[t.p()], (*soCodes)[t.o()]));
+        if(triples.size()>1e6)
+            merge();
+    }
+    PBinaryTriples result()
+    {
+        merge();
+        return std::move(res);
+    }
+
+private:
+    void merge()
+    {
+        if(triples.empty())
+            return;
+        std::cout<<"Merge of "<<triples.size()<<" triples ";
+        std::cout.flush();
+        if(res!=NULL)
+        {
+            BinaryTriples bt;
+            bt.fill(soCodes,pCodes,triples);
+            PBinaryTriples x(new BinaryTriples());
+            x->merge(*res, bt);
+            res=std::move(x);
+        }
+        else
+        {
+            res=PBinaryTriples(new BinaryTriples());
+            res->fill(soCodes,pCodes,triples);
+        }
+        triples.clear();
+        std::cout<<"done"<<std::endl;
+    }
+    PBinaryTriples res;
+    RawBinaryTriples triples;
+    PCodes soCodes,pCodes;
+};
+
+class Coder
+{
+public:
+    void operator()(const Triple& t)
+    {
+        soCodes->inc(t.s());
+        pCodes->inc(t.p());
+        soCodes->inc(t.o());
+    }
+    Coder()
+        :soCodes(new Codes()),pCodes(new Codes())
+    {
+
+    }
+    PCodes soCodes;
+    PCodes pCodes;
+};
+
 int main(int argc, char **argv)
 {
+    if(argc==1)
+    {
+        return 1;
+    }
+    if(argv[1][0]=='c')
+    {
+        std::string format(argv[3]);
+        std::cout<<"Generating codes to file "<<argv[2]<<", the input format is "<<format<<"\n";
+        auto coder=Coder();
+        for(int i=4;i<argc;++i)
+        {
+            std::cout<<"Generating codes from "<<argv[i]<<"\n";
+            LoadTriples(argv[i], coder, format);
+        }
+        PCodes soCodes=coder.soCodes;
+        PCodes pCodes=coder.pCodes;
+        soCodes->compress();
+        pCodes->compress();
+        std::ofstream f(argv[2]);
+        soCodes->save(f);
+        pCodes->save(f);
+        f.close();
+    }
+    if(argv[1][0]=='l')
+    {
+        std::cout<<"Codes in "<<argv[2]<<"\n";
+        PCodes soCodes(new Codes());
+        PCodes pCodes(new Codes());
+        {
+            std::ifstream f(argv[2]);
+            soCodes->load(f);
+            pCodes->load(f);
+            f.close();
+        }
+        std::string format(argv[4]);
+        std::cout<<"Loading to file "<<argv[3]<<", the input format is "<<format<<"\n";
+        Loader loader(soCodes,pCodes);
+        for(int i=5;i<argc;++i)
+        {
+            std::cout<<"Doing magic about "<<argv[i]<<"\n";
+            LoadTriples(argv[i], loader, format);
+        }
+        PBinaryTriples bt=loader.result();
+        std::ofstream f(argv[2]);
+        bt->save(f);
+        f.close();
+    }
+    if(argv[1][0]=='q')
+    {
+        std::cout<<"Querying dataset "<<argv[2]<<"\n";
+        std::ifstream f(argv[2]);
+        BinaryTriples bt;
+        bt.load(f);
+        auto query=TreePattern::Node::fromTriples(parseSparql(argv[3]));
+        query->dump(std::cout);
+        auto result=bt.answer(query);
+#if 0
+        for(auto i:result)
+            std::cout<<i<<"\n";
+#endif
+        std::cout<<"# of rows: "<<result.size()<<std::endl;
+    }
+    return 0;
 #if 1
     auto query=TreePattern::Node::fromTriples(parseSparql(std::string()
                                                           +"?x a ub:GraduateStudent;"
@@ -227,38 +359,5 @@ int main(int argc, char **argv)
 #else
     auto query=TreePattern::Node::fromTriples(parseSparql("?x a ub:GraduateStudent; ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>."));
 #endif
-#if 0
-	for(int i=1;i<argc;i++)
-	{
-		std::cout<<"Loading "<<argv[i]<<"\n";
-		LoadTriples(argv[i], triples);
-	}
-#endif
-    PBinaryTriples bt;
-#if 1
-    PCodes soCodes(new Codes());
-    PCodes pCodes(new Codes());
-    LoadDir("lubm", [&soCodes,&pCodes](const Triple& t)->void {
-        soCodes->inc(t.s());
-        pCodes->inc(t.p());
-        soCodes->inc(t.o());
-    }, "rdfxml");
-    soCodes->compress();
-    pCodes->compress();
-    bt=LoadDir("lubm", soCodes, pCodes, "rdfxml");
-    std::ofstream f("lubm.bin");
-    bt->save(f);
-    f.close();
-#else
-    bt=new BinaryTriples();
-    std::ifstream f("lubm.bin");
-    bt->load(f);
-    f.close();
-#endif
-    query->dump(std::cout);
-    auto result=bt->answer(query);
-    for(auto i:result)
-        std::cout<<i<<"\n";
-    std::cout<<"# of rows: "<<result.size()<<std::endl;
 	return 0;
 }

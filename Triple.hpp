@@ -40,17 +40,18 @@ typedef std::deque<Triple> Triples;
 template<typename T>
 void ProcessTriple(void* user_data, raptor_statement* triple)
 {
-    T fun(*static_cast<T*>(user_data));
     if(triple->object->type!=RAPTOR_TERM_TYPE_URI)
         return;
     std::string s=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->subject->value.uri, NULL)));
     std::string p=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->predicate->value.uri, NULL)));
     std::string o=std::string(reinterpret_cast<char*>(raptor_uri_as_counted_string(triple->object->value.uri, NULL)));
-    fun(Triple(s,p,o));
+    (*static_cast<T*>(user_data))(Triple(s,p,o));
 }
 
+#include <cassert>
+
 template<typename T>
-void LoadTriples(const std::string& file, T fun, const std::string& format="rdfxml")
+void LoadTriples(const std::string& file, T& fun, const std::string& format="rdfxml")
 {
     raptor_world *world = NULL;
     raptor_parser* rdf_parser = NULL;
@@ -60,6 +61,8 @@ void LoadTriples(const std::string& file, T fun, const std::string& format="rdfx
     world = raptor_new_world();
 
     rdf_parser = raptor_new_parser(world, format.c_str());
+
+    assert(rdf_parser!=NULL);
 
     raptor_parser_set_statement_handler(rdf_parser, &fun, ProcessTriple<T>);
 

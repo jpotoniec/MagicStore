@@ -180,6 +180,8 @@ void BinaryTriples::save(std::ofstream& f) const
 
 void BinaryTriples::load(std::ifstream& f)
 {
+    soCodes=PCodes(new Codes());
+    pCodes=PCodes(new Codes());
     soCodes->load(f);
     pCodes->load(f);
     f.read(reinterpret_cast<char*>(&len1), sizeof(len1));
@@ -191,6 +193,7 @@ void BinaryTriples::load(std::ifstream& f)
     f.read(reinterpret_cast<char*>(&len3), sizeof(len3));
     level3=new uint8_t[len3];
     f.read(reinterpret_cast<char*>(level3), len3);
+    std::cout<<"Loaded binary blobs of sizes "<<len1<<"+"<<len2<<"+"<<len3<<" bytes"<<std::endl;
 }
 
 void BinaryTriples::add(const BinaryCode& s, const BinaryCode& p, const BinaryCode& o)
@@ -201,7 +204,6 @@ void BinaryTriples::add(const BinaryCode& s, const BinaryCode& p, const BinaryCo
         write(level1, len1, p);
         memcpy(level1+len1, &len2, sizeof(len2));
         len1+=sizeof(len2);
-        std::cout<<"Written "<<static_cast<uint32_t>(p.length())<<"+32 bits, pLen="<<len1<<"\n";
         prevO=BinaryCode::invalid();
     }
     if(prevO!=o)
@@ -214,11 +216,11 @@ void BinaryTriples::add(const BinaryCode& s, const BinaryCode& p, const BinaryCo
     write(level3, len3, s);
 }
 
-void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, Triples& triples)
+void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triples)
 {
     this->soCodes=soCodes;
     this->pCodes=pCodes;
-    std::sort(triples.begin(), triples.end(), TriplesComparator(soCodes, pCodes));
+    std::sort(triples.begin(), triples.end());
     level1=new uint8_t[(4+sizeof(size_t))*pCodes->size()];
     memset(level1, 0, (4+sizeof(size_t))*pCodes->size());
     len1=0;
@@ -228,10 +230,7 @@ void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, Triples& triples)
     len3=0;
     for(auto t:triples)
     {
-        BinaryCode s((*soCodes)[t.s()]);
-        BinaryCode p((*pCodes)[t.p()]);
-        BinaryCode o((*soCodes)[t.o()]);
-        add(s,p,o);
+        add(t);
 //        std::cout<<t<<" "<<s<<" "<<p<<" "<<o<<"\n";
     }
     finish();
@@ -243,7 +242,6 @@ void BinaryTriples::finish()
     memcpy(level1+len1, &len2, sizeof(len2));
     write(level2, len2, BinaryCode::invalid());
     memcpy(level2+len2, &len3, sizeof(len3));
-    std::cout<<"pLen="<<len1<<" sLen="<<len2<<" oLen="<<len3<<"\n";
 }
 
 class AbstractIterator
@@ -330,42 +328,6 @@ private:
         nextBegin2=nextPos();
         return BinaryTriples::Address(pos2,nextBegin2);
     }
-};
-
-class BinaryTriple
-{
-public:
-    BinaryTriple(const BinaryCode& s,const BinaryCode& p, const BinaryCode& o)
-        :_s(s),_p(p),_o(o)
-    {
-
-    }
-    const BinaryCode& s() const
-    {
-        return _s;
-    }
-    const BinaryCode& p() const
-    {
-        return _p;
-    }
-    const BinaryCode& o() const
-    {
-        return _o;
-    }
-    static int compare(const BinaryTriple& a, const BinaryTriple& b)
-    {
-        int pc=::compare(a.p(),b.p());
-        if(pc!=0)
-            return pc;
-        int oc=::compare(a.o(),b.o());
-        if(oc!=0)
-            return oc;
-        int sc=::compare(a.s(),b.s());
-        return sc;
-    }
-
-private:
-    BinaryCode _s,_p,_o;
 };
 
 size_t readSize(const uint8_t *data, size_t &pos)
