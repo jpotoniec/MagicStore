@@ -9,35 +9,25 @@
 
 typedef std::map<std::string,int> Stats;
 
-struct TriplesComparator
+static inline uint8_t len(uint32_t value)
 {
-    TriplesComparator(const PCodes soCodes, const PCodes pCodes)
-        :soCodes(soCodes),pCodes(pCodes)
-    {
-    }
-	bool operator()(const Triple& a, const Triple& b)
-    {
-        int c=compare((*pCodes)[a.p()], (*pCodes)[b.p()]);
-        if(c!=0)
-            return c<0;
-        c=compare((*soCodes)[a.o()], (*soCodes)[b.o()]);
-        if(c!=0)
-            return c<0;
-        c=compare((*soCodes)[a.s()], (*soCodes)[b.s()]);
-        return c<0;
-    }
-private:
-    const PCodes soCodes, pCodes;
-};
+    if(value<=0x3f)
+        return 0;
+    else if(value<=0x3fff)
+        return 1;
+    else if(value<=0x3fffff)
+        return 2;
+    else
+        return 3;
+}
 
-
-void write(uint8_t *where, size_t &wlen, const BinaryCode& c)
+static void write(uint8_t *where, size_t &wlen, const BinaryCode& c)
 {
     assert(c.length()<=30);
-    size_t len=(c.length()+1)/8;
+    size_t _len=len(c.value());
     //std::cout<<"For "<<static_cast<uint32_t>(c.length())<<" needed is "<<(len+1)<<" bytes\n";
     uint32_t val=c.value();
-    switch(len)
+    switch(_len)
     {
         case 3:
             where[wlen+3]=static_cast<uint8_t>((val>>22)&0xff);
@@ -46,9 +36,9 @@ void write(uint8_t *where, size_t &wlen, const BinaryCode& c)
         case 1:
             where[wlen+1]=static_cast<uint8_t>((val>>6)&0xff);
         case 0:
-            where[wlen+0]=static_cast<uint8_t>((val>>0)&0x3f)|(static_cast<uint8_t>(len)<<6);
+            where[wlen+0]=static_cast<uint8_t>((val>>0)&0x3f)|(static_cast<uint8_t>(_len)<<6);
     }
-    wlen+=len+1;
+    wlen+=_len+1;
 }
 
 static inline void skip(const uint8_t *where, size_t &position)
@@ -57,7 +47,7 @@ static inline void skip(const uint8_t *where, size_t &position)
     position+=len+1;
 }
 
-static inline BinaryCode read(const uint8_t *where, size_t &position)
+static inline uint32_t read(const uint8_t *where, size_t &position)
 {
     uint8_t len=(((where[position])>>6)&0b11);
     uint32_t result=0;
@@ -73,29 +63,21 @@ static inline BinaryCode read(const uint8_t *where, size_t &position)
             result|=static_cast<uint32_t>(where[position+0]&0x3f)<<0;
     }
     position+=len+1;
-    return BinaryCode(result, 8*(len+1)-2);
+    return result;
 }
 
 const std::pair<size_t,size_t> BinaryTriples::invalid=std::pair<size_t,size_t>(static_cast<size_t>(-1),static_cast<size_t>(-1));
 
 static const uint8_t* find(const uint8_t* where, size_t n, uint32_t value)
 {
-    uint8_t length;
-    if(value<=0x3f)
-        length=0;
-    else if(value<=0x3fff)
-        length=1;
-    else if(value<=0x3fffff)
-        length=2;
-    else
-        length=3;
+    uint8_t length=len(value);
     for(size_t i=0;i<n;i+=sizeof(size_t))
     {
         uint8_t len=(((where[i])>>6)&0b11);
-        if(len>=length)
+        if(len==length)
         {
-            BinaryCode c=read(where, i);
-            if(c.value()==value)
+            uint32_t c=read(where, i);
+            if(c==value)
                 return where+i;
         }
         else
@@ -282,7 +264,7 @@ public:
     }
     uint32_t next()
     {
-        uint32_t b=read(data, pos).value();
+        uint32_t b=read(data, pos);
         if(index)
             pos+=sizeof(size_t);
         return b;
@@ -367,8 +349,8 @@ public:
     }
     BinaryTriple next()
     {
-        BinaryCode l3=read(bt.level3, p3);
-        BinaryTriple result(l3,l1,l2);
+        uint32_t l3=read(bt.level3, p3);
+        BinaryTriple result(BinaryCode(l3,len(l3)),BinaryCode(l1,len(l1)),BinaryCode(l2,len(l2)));
 //        std::cout<<"p: "<<p3<<" "<<p2<<" "<<p1<<" n: "<<n3<<" "<<n2<<" inf\n";
         if(p3==n3)
         {
@@ -399,7 +381,7 @@ private:
     static const size_t invalid=std::numeric_limits<size_t>::max();
     const BinaryTriples& bt;
     size_t p1,p2,p3,n2,n3;
-    BinaryCode l2,l1;
+    uint32_t l2,l1;
     bool change;
 };
 
