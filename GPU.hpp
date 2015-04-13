@@ -38,6 +38,7 @@ private:
     cl::Buffer *bufData;
     const uint8_t *data;
     size_t length;
+    cl::Kernel kfind;
 };
 
 #endif // GPU_HPP
