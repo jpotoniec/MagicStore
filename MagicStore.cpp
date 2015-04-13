@@ -7,6 +7,7 @@
 #include <iterator>
 #include <cassert>
 #include <algorithm>
+#include <ctime>
 
 const std::string ub="http://swat.cse.lehigh.edu/onto/univ-bench.owl#";
 const std::string rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
@@ -339,7 +340,14 @@ int main(int argc, char **argv)
         bt.load(f);
         auto query=TreePattern::Node::fromTriples(parseSparql(argv[3]));
         query->dump(std::cout);
-        auto result=bt.answer(query);
+        std::clock_t start=std::clock();
+        int n=1000;
+        std::deque<std::string> result;
+        for(int i=0;i<n;++i)
+            result=bt.answer(query);
+        std::clock_t end=std::clock();
+        double avg=static_cast<double>(end-start)/n/CLOCKS_PER_SEC;
+        std::cout<<"avg="<<avg<<std::endl;
         if(result.size()<100)
             for(auto i:result)
                 std::cout<<i<<"\n";

@@ -438,8 +438,29 @@ PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query
     return NULL;
 }
 
+#include "GPU.hpp"
+GPU gpu;
+
 std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) const
 {
+    gpu.setData(level2, len2);
+    sleep(5);
+    std::deque<FindArgs> r;
+    r.push_back(FindArgs(0, 0, 6808988));
+    size_t pos=0;
+    std::deque<Address> lf = gpu.find(r);
+    for(int i=0;i<6808989;++i)
+    {
+        uint32_t x=read(level2, pos);
+        if(lf[i].first!=x)
+        {
+            std::cout<<"Zonk@"<<i<<std::endl;
+            exit(0);
+        }
+        pos+=4;
+        if(pos>len2)
+            std::cout<<"!!"<<i<<std::endl;
+    }
     if(query->children().empty())
         return flatten(iteratorForQuery(query));
     else
@@ -455,9 +476,36 @@ std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) 
         {
             uint32_t p=(*pCodes)[query->parentProperty()];
             std::deque<uint32_t> result;
-            for(auto o:subjects)
+            Address paddr=level2For1(p);
+            std::clog<<"paddr=("<<paddr.first<<","<<paddr.second<<")\n";
+            size_t pos=paddr.first;
+            std::clog<<"*=";
+            std::clog<<read(level2, pos)<<"\n"; pos+=4;
+            for(int i=0;i<100;++i)
             {
-                auto i=Iterator<false>(level3, level3For12(p, o));
+                read(level2, pos);
+                pos+=4;
+            }
+            std::clog<<read(level2, pos)<<"\n"; pos+=4;
+//            std::clog<<"Subjects size: "<<subjects.size()<<"\n";
+            for(auto o:subjects)
+            {                
+                std::deque<FindArgs> r;
+                auto xxx=find(level2+paddr.first, paddr.second-paddr.first+1, o);
+                if(xxx!=NULL)
+                    std::clog<<std::hex<<o<<std::dec<<"@host: "<<reinterpret_cast<uint64_t>(xxx-level2-paddr.first)<<"\n";
+                r.push_back(FindArgs(paddr.first,paddr.second,0x2e586));
+                std::deque<Address> gpuaddr = gpu.find(r);
+                auto oaddr=level3For12(p, o);
+                if(oaddr!=BinaryTriples::invalid)
+                {
+                    std::clog<<std::hex<<"0x"<<o<<" "<<std::dec;
+                    std::clog<<gpuaddr.size()<<" ";
+                    for(auto a: gpuaddr)
+                        std::clog<<"("<<a.first<<" "<<a.second<<") ";
+                    std::clog<<"("<<oaddr.first<<" "<<oaddr.second<<")\n";
+                }
+                auto i=Iterator<false>(level3, oaddr);
                 while(i.hasNext())
                 {
                     uint32_t s=i.next();
