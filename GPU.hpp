@@ -3,6 +3,9 @@
 
 #include "BinaryTriples.hpp"
 #include "FindArgs.h"
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#include <CL/cl.h>
+#undef CL_VERSION_1_2
 #include <CL/cl.hpp>
 #include <deque>
 #include <string>
@@ -22,7 +25,7 @@ public:
         const uint32_t value;
     };
 
-    GPU();
+    GPU(const std::string& platform="NVIDIA CUDA");
     ~GPU();
     void setData(uint8_t *data, size_t length);
     std::deque<BinaryTriples::Address> find(std::deque<FindArgs> &requests);

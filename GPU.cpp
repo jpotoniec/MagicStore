@@ -29,7 +29,7 @@ cl::Program GPU::load(const std::string& text)
         cl::Program prog(context, text, false);
         try
         {
-            prog.build("-Wall");
+            prog.build("");
             std::cerr<<prog.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev)<<std::endl;
         }
         catch(cl::Error& err)
@@ -41,10 +41,27 @@ cl::Program GPU::load(const std::string& text)
 }
 
 
-GPU::GPU()
+GPU::GPU(const std::string& platform)
     :bufData(NULL),data(NULL),length(0)
 {
-    dev=cl::Device::getDefault();
+    cl::Platform p=cl::Platform::getDefault();
+    std::vector<cl::Platform> all_platforms;
+    cl::Platform::get(&all_platforms);
+    std::clog<<"Available platforms:\n";
+    for(auto& a:all_platforms)
+        std::clog<<a.getInfo<CL_PLATFORM_NAME>()<<"\n";
+    for(auto& a:all_platforms)
+    {
+        if(platform==a.getInfo<CL_PLATFORM_NAME>())
+        {
+            p=a;
+            break;
+        }
+    }
+    std::clog<<"Selected platform: "<<p.getInfo<CL_PLATFORM_NAME>()<<"\n";
+    std::vector<cl::Device> devices;
+    p.getDevices(CL_DEVICE_TYPE_ALL, &devices);
+    dev=devices[0];
     context=cl::Context(dev);
     prog=load(kernel_cl);
 }
@@ -74,6 +91,7 @@ void GPU::setData(uint8_t *data, size_t length)
 
 std::deque<BinaryTriples::Address> GPU::find(std::deque<FindArgs> &requests)
 {
+#if 0
     cl::CommandQueue queue(context,dev);
     cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> find(cl::Kernel(prog,"find"));
     FindArgs a=requests[0];
@@ -89,20 +107,21 @@ std::deque<BinaryTriples::Address> GPU::find(std::deque<FindArgs> &requests)
         result.push_back(BinaryTriples::Address(output[i].s[0], output[i].s[1]));
     std::cout<<"I'm done for!"<<std::endl;
     return result;
-#if 0
+#endif
+#if 1
     cl::CommandQueue queue(context,dev);
     cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> find(cl::Kernel(prog,"find"));
 //    std::clog<<"Queue and kernel constructed"<<std::endl;
     std::deque<BinaryTriples::Address> result;
-    cl_uint2 *output=new cl_uint2[requests.size()];
-    cl::Buffer bufOutput(context, CL_MEM_WRITE_ONLY, requests.size()*sizeof(cl_uint2));
+    cl_ulong2 *output=new cl_ulong2[requests.size()];
+    cl::Buffer bufOutput(context, CL_MEM_WRITE_ONLY, requests.size()*sizeof(cl_ulong2));
 //    std::clog<<"Output buffer ready"<<std::endl;
     cl::Buffer bufArgs(context, requests.begin(), requests.end(), true, false);
 //    std::clog<<"Args buffer ready"<<std::endl;
     find(cl::EnqueueArgs(queue, cl::NDRange(requests.size())), *bufData, bufArgs, bufOutput);
     queue.finish();
 //    std::clog<<"Kernels executed"<<std::endl;
-    memset(output, 0, sizeof(cl_uint2)*requests.size());
+    memset(output, 0, sizeof(cl_ulong2)*requests.size());
     cl::copy(queue, bufOutput, output, output+requests.size());
     queue.finish();
     for(size_t i=0;i<requests.size();++i)
