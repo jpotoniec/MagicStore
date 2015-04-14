@@ -24,7 +24,8 @@ HEADERS += \
     BinaryTriples.hpp BinaryTriples.hpp  Compressor.hpp    TreePattern.hpp  Triple.hpp \
     Merger.hpp \
     GPU.hpp \
-    FindArgs.h
+    FindArgs.h \
+    BinaryHelpers.h
 
 KERNELS = kernel.cl
 preprocess.name = Preprocess OpenCL kernels

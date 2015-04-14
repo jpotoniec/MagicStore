@@ -68,7 +68,7 @@ GPU::GPU(const std::string& platform)
     dev=devices[0];
     context=cl::Context(dev);
     prog=load(kernel_cl);
-    kfind=cl::Kernel(prog,"find");
+    kfind=cl::Kernel(prog,"kfind");
 }
 
 GPU::~GPU()

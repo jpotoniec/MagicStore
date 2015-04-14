@@ -6,88 +6,16 @@
 #include <algorithm>
 #include <memory>
 #include "Merger.hpp"
-
-typedef std::map<std::string,int> Stats;
-
-static inline uint8_t len(uint32_t value)
-{
-    if(value<=0x3f)
-        return 0;
-    else if(value<=0x3fff)
-        return 1;
-    else if(value<=0x3fffff)
-        return 2;
-    else
-        return 3;
-}
-
-static void write(uint8_t *where, size_t &wlen, uint32_t val)
-{
-    size_t _len=len(val);
-    switch(_len)
-    {
-        case 3:
-            where[wlen+3]=static_cast<uint8_t>((val>>22)&0xff);
-        case 2:
-            where[wlen+2]=static_cast<uint8_t>((val>>14)&0xff);
-        case 1:
-            where[wlen+1]=static_cast<uint8_t>((val>>6)&0xff);
-        case 0:
-            where[wlen+0]=static_cast<uint8_t>((val>>0)&0x3f)|(static_cast<uint8_t>(_len)<<6);
-    }
-    wlen+=_len+1;
-}
-
-static inline void skip(const uint8_t *where, size_t &position)
-{
-    uint8_t len=(((where[position])>>6)&0b11);
-    position+=len+1;
-}
-
-static inline uint32_t read(const uint8_t *where, size_t &position)
-{
-    uint8_t len=(((where[position])>>6)&0b11);
-    uint32_t result=0;
-    switch(len)
-    {
-        case 3:
-            result|=static_cast<uint32_t>(where[position+3])<<22;
-        case 2:
-            result|=static_cast<uint32_t>(where[position+2])<<14;
-        case 1:
-            result|=static_cast<uint32_t>(where[position+1])<<6;
-        case 0:
-            result|=static_cast<uint32_t>(where[position+0]&0x3f)<<0;
-    }
-    position+=len+1;
-    return result;
-}
+#include "BinaryHelpers.h"
 
 const std::pair<size_t,size_t> BinaryTriples::invalid=std::pair<size_t,size_t>(static_cast<size_t>(-1),static_cast<size_t>(-1));
 
-static const uint8_t* find(const uint8_t* where, size_t n, uint32_t value)
-{
-    uint8_t length=len(value);
-    for(size_t i=0;i<n;i+=sizeof(size_t))
-    {
-        uint8_t len=(((where[i])>>6)&0b11);
-        if(len==length)
-        {
-            uint32_t c=read(where, i);
-            if(c==value)
-                return where+i;
-        }
-        else
-            i+=len+1;
-    }
-    return NULL;
-}
-
 BinaryTriples::Address BinaryTriples::level2For1(uint32_t p) const
 {
-    const uint8_t *ptr=find(level1, len1, p);
-    if(ptr!=NULL)
+    size_t d=find(level1, len1, p);
+    if(d!=InvalidPosition)
     {
+        const uint8_t *ptr=level1+d;
         size_t begin=*reinterpret_cast<const size_t*>(ptr);
         ptr+=sizeof(size_t);
         size_t end=len2;
@@ -106,9 +34,10 @@ BinaryTriples::Address BinaryTriples::level2For1(uint32_t p) const
 BinaryTriples::Address BinaryTriples::level3For2(const Address& a, uint32_t s) const
 {
     size_t len=a.second-a.first;
-    const uint8_t *ptr=find(level2+a.first, len, s);
-    if(ptr!=NULL)
+    size_t d=find(level2+a.first, len, s);
+    if(d!=InvalidPosition)
     {
+        const uint8_t *ptr=level2+a.first+d;
         size_t begin=*reinterpret_cast<const size_t*>(ptr);
         ptr+=sizeof(size_t);
         assert(ptr-level2<len2);
@@ -442,7 +371,7 @@ PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query
 
 #if USE_GPU
 #include "GPU.hpp"
-GPU gpu("NVIDIA CUDA");
+GPU gpu("Portable Computing Language");
 #endif
 
 std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) const
