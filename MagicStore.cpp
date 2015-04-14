@@ -341,13 +341,13 @@ int main(int argc, char **argv)
         auto query=TreePattern::Node::fromTriples(parseSparql(argv[3]));
         query->dump(std::cout);
         std::clock_t start=std::clock();
-        int n=1000;
+        int n=10;
         std::deque<std::string> result;
         for(int i=0;i<n;++i)
             result=bt.answer(query);
         std::clock_t end=std::clock();
         double avg=static_cast<double>(end-start)/n/CLOCKS_PER_SEC;
-        std::cout<<"avg="<<avg<<std::endl;
+        std::cout<<"avg="<<avg<<" (over "<<n<<" tries)"<<std::endl;
         if(result.size()<100)
             for(auto i:result)
                 std::cout<<i<<"\n";
