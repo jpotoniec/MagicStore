@@ -45,6 +45,12 @@ namespace TreePattern
 			}
 			static Node* fromTriples(const std::deque<Triple>& triples);
 			void dump(std::ostream& o, const std::string& prefix="") const;
+            void sort()
+            {
+                for(auto ch:_children)
+                    ch.second->sort();
+                std::sort(_children.begin(), _children.end(), [](const std::pair<std::string,Node*>& a, const std::pair<std::string,Node*>& b)->bool{return a.second->height()>b.second->height();});
+            }
 		private:
 			explicit Node(const std::string& label)
 				:_parent(NULL),_label(label)
@@ -62,6 +68,13 @@ namespace TreePattern
 			std::string _parentProperty;
 			Children _children;
 			std::string _label;
+            size_t height() const
+            {
+                if(_children.empty())
+                    return 0;
+                else
+                    return _children[0].second->height()+1;
+            }
 	};
 }
 

@@ -334,12 +334,13 @@ int main(int argc, char **argv)
     }
     if(argv[1][0]=='q')
     {
+        auto query=TreePattern::Node::fromTriples(parseSparql(argv[3]));
+        query->sort();
+        query->dump(std::cout);
         std::cout<<"Querying dataset "<<argv[2]<<"\n";
         std::ifstream f(argv[2]);
         BinaryTriples bt;
         bt.load(f);
-        auto query=TreePattern::Node::fromTriples(parseSparql(argv[3]));
-        query->dump(std::cout);
         std::clock_t start=std::clock();
         int n=10;
         std::deque<std::string> result;
