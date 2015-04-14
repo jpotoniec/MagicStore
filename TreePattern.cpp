@@ -1,7 +1,6 @@
 #include "TreePattern.hpp"
 #include <map>
 #include <stdexcept>
-
 namespace TreePattern
 {
 	static bool isVar(const std::string& var)
@@ -18,17 +17,20 @@ namespace TreePattern
 			assert(isVar(t.s()));
 			if(vars.find(t.s())==vars.end())
 				vars[t.s()]=new Node(t.s());
-		}
+        }
 		for(Triple t:triples)
 		{
-			Node *o=vars[t.o()];
-			if(o==NULL)
-				o=new Node(t.o());
+            auto i=vars.find(t.o());
+            Node *o;
+            if(i!=vars.end())
+                o=i->second;
+            else
+                o=new Node(t.o());
 			o->parent(vars[t.s()], t.p());
 		}
-		for(auto v:vars)
+        for(auto v:vars)
 			if(v.second->parent()==NULL)
-				return v.second;
+                return v.second;
 		throw std::runtime_error("Can not find root, check in your pots");
 	}
 
