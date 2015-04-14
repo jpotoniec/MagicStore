@@ -97,6 +97,7 @@ void BinaryTriples::load(std::ifstream& f)
     f.read(reinterpret_cast<char*>(&len3), sizeof(len3));
     level3=new uint8_t[len3];
     f.read(reinterpret_cast<char*>(level3), len3);
+    initGPU();
     std::cout<<"Loaded binary blobs of sizes "<<len1<<"+"<<len2<<"+"<<len3<<" bytes"<<std::endl;
 }
 
@@ -156,6 +157,7 @@ void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triple
 //        std::cout<<t<<" "<<s<<" "<<p<<" "<<o<<"\n";
     }
     finish();
+    initGPU();
 }
 
 void BinaryTriples::finish()
@@ -164,6 +166,13 @@ void BinaryTriples::finish()
     memcpy(level1+len1, &len2, sizeof(len2));
     write(level2, len2, std::numeric_limits<uint32_t>::max());
     memcpy(level2+len2, &len3, sizeof(len3));
+}
+
+void BinaryTriples::initGPU()
+{
+#if USE_GPU
+    gpu.setData(level2, len2);
+#endif
 }
 
 class AbstractIterator
@@ -367,18 +376,8 @@ PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query
     return NULL;
 }
 
-#define USE_GPU 1
-
-#if USE_GPU
-#include "GPU.hpp"
-GPU gpu("Portable Computing Language");
-#endif
-
 std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) const
 {
-#if USE_GPU
-    gpu.setData(level2, len2);
-#endif
     if(query->children().empty())
         return flatten(iteratorForQuery(query));
     else

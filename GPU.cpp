@@ -4,23 +4,7 @@
 #include <iterator>
 #include "FindArgs.h"
 
-#if 0
-static std::string get_file_contents(const std::string& filename)
-{
-        std::ifstream in(filename.c_str(), std::ios::in | std::ios::binary);
-        if (in)
-        {
-                std::string contents;
-                in.seekg(0, std::ios::end);
-                contents.resize(in.tellg());
-                in.seekg(0, std::ios::beg);
-                in.read(&contents[0], contents.size());
-                in.close();
-                return(contents);
-        }
-        return "";
-}
-#endif
+#if USE_GPU
 
 extern const char *kernel_cl;
 
@@ -41,21 +25,25 @@ cl::Program GPU::load(const std::string& text)
 }
 
 
-GPU::GPU(const std::string& platform)
+GPU::GPU()
     :bufData(NULL),data(NULL),length(0)
 {
+    const char *platform=getenv("PLATFORM");
     cl::Platform p=cl::Platform::getDefault();
     std::vector<cl::Platform> all_platforms;
     cl::Platform::get(&all_platforms);
     std::clog<<"Available platforms:\n";
     for(auto& a:all_platforms)
         std::clog<<a.getInfo<CL_PLATFORM_NAME>()<<"\n";
-    for(auto& a:all_platforms)
+    if(platform!=NULL)
     {
-        if(platform==a.getInfo<CL_PLATFORM_NAME>())
+        for(auto& a:all_platforms)
         {
-            p=a;
-            break;
+            if(platform==a.getInfo<CL_PLATFORM_NAME>())
+            {
+                p=a;
+                break;
+            }
         }
     }
     std::clog<<"Selected platform: "<<p.getInfo<CL_PLATFORM_NAME>()<<"\n";
@@ -94,11 +82,11 @@ void GPU::setData(uint8_t *data, size length)
     }
 }
 
-std::deque<BinaryTriples::Address> GPU::find(std::deque<FindArgs> &requests)
+std::deque<Address> GPU::find(std::deque<FindArgs> &requests) const
 {
     cl::CommandQueue queue(context,dev);
 //    std::clog<<"Queue and kernel constructed"<<std::endl;
-    std::deque<BinaryTriples::Address> result;
+    std::deque<Address> result;
     cl_ulong2 *output=new cl_ulong2[requests.size()];
     cl::Buffer bufOutput(context, CL_MEM_WRITE_ONLY, requests.size()*sizeof(cl_ulong2));
 //    std::clog<<"Output buffer ready"<<std::endl;
@@ -113,8 +101,10 @@ std::deque<BinaryTriples::Address> GPU::find(std::deque<FindArgs> &requests)
     for(size_t i=0;i<requests.size();++i)
     {
         if(output[i].s[0]!=-1)
-            result.push_back(BinaryTriples::Address(output[i].s[0],output[i].s[1]));
+            result.push_back(Address(output[i].s[0],output[i].s[1]));
     }
     delete []output;
     return result;
 }
+
+#endif

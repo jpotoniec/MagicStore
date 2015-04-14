@@ -1,6 +1,7 @@
 #ifndef BINARYTRIPLESHPP
 #define BINARYTRIPLESHPP
 
+#include "GPU.hpp"
 #include "Types.h"
 #include "Triple.hpp"
 #include "Compressor.hpp"
@@ -68,7 +69,7 @@ class BinaryTriple;
 class BinaryTriples : private boost::noncopyable
 {
 	public:
-        typedef std::pair<size,size> Address;
+        typedef ::Address Address;
         static const std::pair<size,size> invalid;
         void fill(PCodes soCodes, PCodes pCodes,RawBinaryTriples& triples);
         void merge(const BinaryTriples& a, const BinaryTriples& b);
@@ -88,6 +89,7 @@ class BinaryTriples : private boost::noncopyable
         void add(const BinaryTriple& t);
         void finish();
         void dump(const BinaryTriple& t) const;
+        void initGPU();
 
         friend class TripleIterator;
 
@@ -102,6 +104,9 @@ class BinaryTriples : private boost::noncopyable
         uint8_t *level3;
         size len3;
         uint32_t prevP,prevO;
+#if USE_GPU
+        GPU gpu;
+#endif
 };
 
 #endif //BINARYTRIPLESHPP

@@ -1,7 +1,8 @@
 #ifndef GPU_HPP
 #define GPU_HPP
 
-#include "BinaryTriples.hpp"
+#if USE_GPU
+
 #include "FindArgs.h"
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 #include <CL/cl.h>
@@ -9,14 +10,15 @@
 #include <CL/cl.hpp>
 #include <deque>
 #include <string>
+#include <boost/noncopyable.hpp>
 
-class GPU
+class GPU : private boost::noncopyable
 {
 public:
-    GPU(const std::string& platform="NVIDIA CUDA");
+    GPU();
     ~GPU();
     void setData(uint8_t *data, size length);
-    std::deque<BinaryTriples::Address> find(std::deque<FindArgs> &requests);
+    std::deque<Address> find(std::deque<FindArgs> &requests) const;
     void test();
 private:
     cl::Program load(const std::string& text);
@@ -28,5 +30,7 @@ private:
     size length;
     cl::Kernel kfind;
 };
+
+#endif
 
 #endif // GPU_HPP

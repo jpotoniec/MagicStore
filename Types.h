@@ -15,4 +15,8 @@ typedef ulong uint64_t;
 
 typedef uint64_t size;
 
+#ifdef __cplusplus
+typedef std::pair<size,size> Address;
+#endif
+
 #endif // TYPES_H
