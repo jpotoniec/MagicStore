@@ -1,6 +1,7 @@
 #ifndef BINARYTRIPLESHPP
 #define BINARYTRIPLESHPP
 
+#include "Types.h"
 #include "Triple.hpp"
 #include "Compressor.hpp"
 #include "TreePattern.hpp"
@@ -67,8 +68,8 @@ class BinaryTriple;
 class BinaryTriples : private boost::noncopyable
 {
 	public:
-        typedef std::pair<size_t,size_t> Address;
-        static const std::pair<size_t,size_t> invalid;        
+        typedef std::pair<size,size> Address;
+        static const std::pair<size,size> invalid;
         void fill(PCodes soCodes, PCodes pCodes,RawBinaryTriples& triples);
         void merge(const BinaryTriples& a, const BinaryTriples& b);
         std::deque<std::string> answer(const TreePattern::Node* query) const;
@@ -93,13 +94,13 @@ class BinaryTriples : private boost::noncopyable
         PCodes soCodes,pCodes;
 		//id[1-4 bajty],pozycja w subjects[4 bajty]
         uint8_t *level1;
-        size_t len1;
+        size len1;
 		//id[1-4 bajty],pozycja w objects[4 bajty]
         uint8_t *level2;
-        size_t len2;
+        size len2;
 		//id[1-4 bajty]
         uint8_t *level3;
-        size_t len3;
+        size len3;
         uint32_t prevP,prevO;
 };
 

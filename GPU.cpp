@@ -77,7 +77,7 @@ GPU::~GPU()
         delete bufData;
 }
 
-void GPU::setData(uint8_t *data, size_t length)
+void GPU::setData(uint8_t *data, size length)
 {
     if(this->data!=data)
     {

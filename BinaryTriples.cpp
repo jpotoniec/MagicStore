@@ -8,22 +8,22 @@
 #include "Merger.hpp"
 #include "BinaryHelpers.h"
 
-const std::pair<size_t,size_t> BinaryTriples::invalid=std::pair<size_t,size_t>(static_cast<size_t>(-1),static_cast<size_t>(-1));
+const std::pair<size,size> BinaryTriples::invalid=std::pair<size,size>(static_cast<size>(-1),static_cast<size>(-1));
 
 BinaryTriples::Address BinaryTriples::level2For1(uint32_t p) const
 {
-    size_t d=find(level1, len1, p);
+    size d=find(level1, len1, p);
     if(d!=InvalidPosition)
     {
         const uint8_t *ptr=level1+d;
-        size_t begin=*reinterpret_cast<const size_t*>(ptr);
-        ptr+=sizeof(size_t);
-        size_t end=len2;
+        size begin=*reinterpret_cast<const size*>(ptr);
+        ptr+=sizeof(size);
+        size end=len2;
         if(ptr-level1<len1)
         {
-            size_t d=0;
+            size d=0;
             read(ptr,d);
-            end=*reinterpret_cast<const size_t*>(ptr+d);
+            end=*reinterpret_cast<const size*>(ptr+d);
         }
         return std::make_pair(begin,end);
     }
@@ -33,17 +33,17 @@ BinaryTriples::Address BinaryTriples::level2For1(uint32_t p) const
 
 BinaryTriples::Address BinaryTriples::level3For2(const Address& a, uint32_t s) const
 {
-    size_t len=a.second-a.first;
-    size_t d=find(level2+a.first, len, s);
+    size len=a.second-a.first;
+    size d=find(level2+a.first, len, s);
     if(d!=InvalidPosition)
     {
         const uint8_t *ptr=level2+a.first+d;
-        size_t begin=*reinterpret_cast<const size_t*>(ptr);
-        ptr+=sizeof(size_t);
+        size begin=*reinterpret_cast<const size*>(ptr);
+        ptr+=sizeof(size);
         assert(ptr-level2<len2);
-        size_t d=0;
+        size d=0;
         skip(ptr,d);
-        size_t end=*reinterpret_cast<const size_t*>(ptr+d);
+        size end=*reinterpret_cast<const size*>(ptr+d);
         return std::make_pair(begin,end);
     }
     else
@@ -125,7 +125,7 @@ void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triple
     this->soCodes=soCodes;
     this->pCodes=pCodes;
     std::sort(triples.begin(), triples.end());
-    size_t psize=0,osize=0,ssize=0;
+    size psize=0,osize=0,ssize=0;
     uint32_t p(std::numeric_limits<uint32_t>::max()),o(std::numeric_limits<uint32_t>::max());
     for(auto t:triples)
     {
@@ -141,8 +141,8 @@ void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triple
             o=t.o();
         }
     }
-    psize*=(4+sizeof(size_t));
-    osize*=(4+sizeof(size_t));
+    psize*=(4+sizeof(size));
+    osize*=(4+sizeof(size));
     ssize=4*triples.size();
     level1=new uint8_t[psize];
     len1=0;
@@ -192,7 +192,7 @@ public:
     {
         uint32_t b=read(data, pos);
         if(index)
-            pos+=sizeof(size_t);
+            pos+=sizeof(size);
         return b;
     }
     bool hasNext() const
@@ -205,7 +205,7 @@ public:
     }
 private:
     const uint8_t *data;
-    size_t pos,end;
+    size pos,end;
 };
 
 class DoubleIterator:public AbstractIterator
@@ -224,7 +224,7 @@ public:
         uint32_t x=b.next();
         if(!b.hasNext() && pos<end)
         {
-            size_t tmp=nextPos();
+            size tmp=nextPos();
             b=Iterator<false>(data2, BinaryTriples::Address(nextBegin2,tmp));
             nextBegin2=tmp;
         }
@@ -232,31 +232,31 @@ public:
     }
 private:
     const uint8_t *data1,*data2;
-    size_t pos,end;
-    size_t nextBegin2;
+    size pos,end;
+    size nextBegin2;
     Iterator<false> b;
 
-    size_t nextPos()
+    size nextPos()
     {
-        size_t x;
+        size x;
         skip(data1,pos);
-        memcpy(&x,data1+pos,sizeof(size_t));
-        pos+=sizeof(size_t);
+        memcpy(&x,data1+pos,sizeof(size));
+        pos+=sizeof(size);
         return x;
     }
     BinaryTriples::Address init()
     {
-        size_t pos2=nextPos();
+        size pos2=nextPos();
         nextBegin2=nextPos();
         return BinaryTriples::Address(pos2,nextBegin2);
     }
 };
 
-size_t readSize(const uint8_t *data, size_t &pos)
+size readSize(const uint8_t *data, size &pos)
 {
-    size_t result;
-    memcpy(&result, data+pos, sizeof(size_t));
-    pos+=sizeof(size_t);
+    size result;
+    memcpy(&result, data+pos, sizeof(size));
+    pos+=sizeof(size);
     return result;
 }
 
@@ -283,12 +283,12 @@ public:
             if(p2==n2)
             {
                 l1=read(bt.level1, p1);
-                size_t x=readSize(bt.level1, p1);
+                size x=readSize(bt.level1, p1);
                 assert(x==p2);
                 n2=nextSize(bt.level1, p1);
             }
             l2=read(bt.level2, p2);
-            size_t x=readSize(bt.level2, p2);
+            size x=readSize(bt.level2, p2);
             assert(x==p3);
             n3=nextSize(bt.level2,p2);
         }
@@ -299,14 +299,14 @@ public:
         return p3<bt.len3;
     }
 private:
-    size_t nextSize(const uint8_t *data, size_t n)
+    size nextSize(const uint8_t *data, size n)
     {
         skip(data, n);
         return readSize(data,n);
     }
-    static const size_t invalid=std::numeric_limits<size_t>::max();
+    static const size invalid=std::numeric_limits<size>::max();
     const BinaryTriples& bt;
-    size_t p1,p2,p3,n2,n3;
+    size p1,p2,p3,n2,n3;
     uint32_t l2,l1;
     bool change;
 };

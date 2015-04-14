@@ -1,17 +1,9 @@
 #ifndef BINARYHELPERS_H
 #define BINARYHELPERS_H
 
-#ifdef KERNEL
-typedef uchar uint8_t;
-typedef uint uint32_t;
-#define GLOBAL_SPACE global
-#define CONST_SPACE constant
-#else
-#define GLOBAL_SPACE
-#define CONST_SPACE
-#endif
+#include "Types.h"
 
-const CONST_SPACE size_t InvalidPosition=-1;
+const CONST_SPACE size InvalidPosition=-1;
 
 inline uint8_t len(uint32_t value)
 {
@@ -26,9 +18,9 @@ inline uint8_t len(uint32_t value)
 }
 
 #ifndef KERNEL
-inline void write(uint8_t *where, size_t &wlen, uint32_t val)
+inline void write(uint8_t *where, size &wlen, uint32_t val)
 {
-    size_t _len=len(val);
+    uint8_t _len=len(val);
     switch(_len)
     {
         case 3:
@@ -44,13 +36,13 @@ inline void write(uint8_t *where, size_t &wlen, uint32_t val)
 }
 #endif
 
-inline void skip(GLOBAL_SPACE const uint8_t *where, size_t *position)
+inline void skip(GLOBAL_SPACE const uint8_t *where, size *position)
 {
     uint8_t len=(((where[*position])>>6)&0b11);
     *position+=len+1;
 }
 
-inline uint32_t read(GLOBAL_SPACE const uint8_t *where, size_t *position)
+inline uint32_t read(GLOBAL_SPACE const uint8_t *where, size *position)
 {
     uint8_t len=(((where[*position])>>6)&0b11);
     uint32_t result=0;
@@ -70,20 +62,20 @@ inline uint32_t read(GLOBAL_SPACE const uint8_t *where, size_t *position)
 }
 
 #ifdef __cplusplus
-inline void skip(const uint8_t *where, size_t &position)
+inline void skip(const uint8_t *where, size &position)
 {
     skip(where, &position);
 }
-inline uint32_t read(const uint8_t *where, size_t &position)
+inline uint32_t read(const uint8_t *where, size &position)
 {
     return read(where, &position);
 }
 #endif
 
-inline size_t find(GLOBAL_SPACE const uint8_t* where, size_t n, uint32_t value)
+inline size find(GLOBAL_SPACE const uint8_t* where, size n, uint32_t value)
 {
     uint8_t length=len(value);
-    for(size_t i=0;i<n;i+=sizeof(size_t))
+    for(size i=0;i<n;i+=sizeof(size))
     {
         uint8_t len=(((where[i])>>6)&0b11);
         if(len==length)

@@ -14,7 +14,7 @@ ulong read64(global const uchar* data, uint pos)
 void kernel kfind(global const uchar* data, global const FindArgs* params, global ulong2 *result)
 {
     FindArgs args=params[get_global_id(0)];
-    size_t d=find(data+args.begin, args.end-args.begin, args.value);
+    size d=find(data+args.begin, args.end-args.begin, args.value);
     ulong b=-1;
     ulong e=-1;
     if(d!=-1)

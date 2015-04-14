@@ -1,30 +1,27 @@
 #ifndef FINDARGS_H
 #define FINDARGS_H
 
-#ifdef __cplusplus
+#ifndef KERNEL
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 #include <CL/cl.h>
 #undef CL_VERSION_1_2
 #include <CL/cl.hpp>
 #endif
 
-#ifndef __cplusplus
-typedef ulong cl_ulong;
-typedef uint cl_uint;
-#endif
+#include "Types.h"
 
 typedef struct FindArgs
 {
 #ifdef __cplusplus
-    FindArgs(cl_ulong b, cl_ulong e, cl_uint val)
+    FindArgs(size b, size e, uint32_t val)
         :begin(b),end(e),value(val)
     {
 
     }
 #endif
-    cl_ulong begin;
-    cl_ulong end;
-    cl_uint value;
+    size begin;
+    size end;
+    uint32_t value;
 } FindArgs;
 
 #endif // FINDARGS_H

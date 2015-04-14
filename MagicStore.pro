@@ -25,7 +25,8 @@ HEADERS += \
     Merger.hpp \
     GPU.hpp \
     FindArgs.h \
-    BinaryHelpers.h
+    BinaryHelpers.h \
+    Types.h
 
 KERNELS = kernel.cl
 preprocess.name = Preprocess OpenCL kernels

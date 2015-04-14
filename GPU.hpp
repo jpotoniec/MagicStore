@@ -13,21 +13,9 @@
 class GPU
 {
 public:
-    class Request
-    {
-    public:
-        Request(size_t start, size_t end, uint32_t value)
-            :begin(start),end(end),value(value)
-        {
-        }
-        const size_t begin;
-        const size_t end;
-        const uint32_t value;
-    };
-
     GPU(const std::string& platform="NVIDIA CUDA");
     ~GPU();
-    void setData(uint8_t *data, size_t length);
+    void setData(uint8_t *data, size length);
     std::deque<BinaryTriples::Address> find(std::deque<FindArgs> &requests);
     void test();
 private:
@@ -37,7 +25,7 @@ private:
     cl::Program prog;
     cl::Buffer *bufData;
     const uint8_t *data;
-    size_t length;
+    size length;
     cl::Kernel kfind;
 };
 
