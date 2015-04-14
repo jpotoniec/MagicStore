@@ -20,7 +20,10 @@ public:
     void setData(uint8_t *data, size length);
     std::deque<Address> find(std::deque<FindArgs> &requests) const;
     void test();
+    void sort(uint32_t *p_input, size arraySize);
+    void testSort();
 private:
+    void sort2(uint32_t *p_input, size arraySize);
     cl::Program load(const std::string& text);
     cl::Device dev;
     cl::Context context;
@@ -28,7 +31,7 @@ private:
     cl::Buffer *bufData;
     const uint8_t *data;
     size length;
-    cl::Kernel kfind;
+    cl::Kernel kfind,ksort;
 };
 
 #endif

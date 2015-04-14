@@ -107,4 +107,89 @@ std::deque<Address> GPU::find(std::deque<FindArgs> &requests) const
     return result;
 }
 
+void GPU::testSort()
+{
+    size n=15;
+    uint32_t *data=new uint32_t[n];
+    for(int i=0;i<n;++i)
+        data[i]=rand()%20;
+    for(int i=0;i<n;++i)
+        std::cout<<data[i]<<" ";
+    std::cout<<"\n";
+    sort(data, n);
+    for(int i=0;i<n;++i)
+        std::cout<<data[i]<<" ";
+    std::cout<<"\n";
+    for(int i=1;i<n;++i)
+        if(data[i-1]>data[i])
+            std::cout<<"Zonk@"<<i<<std::endl;
+}
+
+extern const char *BitonicSort_cl;
+
+static size zeroCopySizeAlignment (size requiredSize)
+{
+    // Please refer to Intel Zero Copy Tutorial and OpenCL Performance Guide
+    // The following statement rounds requiredSize up to the next 64-byte boundary
+    return requiredSize + (~requiredSize + 1) % 64;   // or even shorter: requiredSize + (-requiredSize) % 64
+}
+
+void GPU::sort(uint32_t *p_input, size arraySize)
+{
+    uint32_t *ptr=p_input;
+    for(uint8_t i=8*sizeof(arraySize);i>=2;i--)
+    {
+        size mask=(1<<i);
+        if(arraySize&mask)
+        {
+            sort2(ptr, mask);
+            ptr+=mask;
+        }
+    }
+}
+
+//wymaga, żeby arraySize było potęgą dwójki
+void GPU::sort2(uint32_t *p_input, size arraySize)
+{
+
+    cl::CommandQueue queue(context,dev);
+    ksort=cl::Kernel(load(BitonicSort_cl),"BitonicSort");
+
+    cl_int numStages = 0;
+    cl_uint temp;
+
+    cl_int stage;
+    cl_int passOfStage;
+
+    cl::Buffer inputBuffer(context, CL_MEM_USE_HOST_PTR, zeroCopySizeAlignment(sizeof(uint32_t) * arraySize), p_input);
+
+    for (temp = arraySize; temp > 2; temp >>= 1)
+    {
+        numStages++;
+    }
+
+    cl::make_kernel<cl::Buffer&,cl_uint, cl_uint, cl_uint> sort(ksort);
+
+    for (stage = 0; stage < numStages; stage++)
+    {
+        for (passOfStage = stage; passOfStage >= 0; passOfStage--)
+        {
+            // set work-item dimensions
+            size_t gsz = arraySize / (2*4);
+            size_t global_work_size = ( passOfStage ? gsz : gsz << 1 );    //number of quad items in input array
+
+            sort(cl::EnqueueArgs(queue,global_work_size), inputBuffer, stage, passOfStage, 1);
+
+        }
+    }
+    queue.finish();
+    auto tmp_ptr = queue.enqueueMapBuffer(inputBuffer, true, CL_MAP_READ, 0, sizeof(cl_int) * arraySize);
+    if(tmp_ptr!=p_input)
+    {
+        throw std::runtime_error("clEnqueueMapBuffer failed to return original pointer\n");
+    }
+    queue.finish();
+    queue.enqueueUnmapMemObject(inputBuffer, tmp_ptr);
+}
+
 #endif
