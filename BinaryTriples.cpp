@@ -423,7 +423,6 @@ std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) 
 
 std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) const
 {
-    TripleIterator t(*this);
     std::deque<uint32_t> codes=answerCodes(query);
     std::deque<std::string> result;
     for(auto b:codes)

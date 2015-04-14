@@ -6,8 +6,12 @@
 #include <map>
 #include <cassert>
 #include <memory>
-#include <unordered_set>
 #include <iosfwd>
+#if USE_UNORDERED_SET
+#include <unordered_set>
+#else
+#include <set>
+#endif
 
 class Node
 {
@@ -63,6 +67,7 @@ class Node
 class NodeSetHelper
 {
 public:
+#if USE_UNORDERED_SET
     size_t operator()(const Node *a) const
     {
         return hasher(a->getLabel());
@@ -73,6 +78,12 @@ public:
     }
 private:
     std::hash<std::string> hasher;
+#else
+    bool operator()(const Node *a, const Node *b) const
+    {
+        return a->getLabel()<b->getLabel();
+    }
+#endif
 };
 
 class Codes : private boost::noncopyable
@@ -117,7 +128,11 @@ class Codes : private boost::noncopyable
         void MakeCode(const Node *root, uint32_t prefix, uint8_t len=0);
         std::map<std::string,uint32_t> valToCode;
 		Node *root;
+#if USE_UNORDERED_SET
         std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
+#else
+        std::set<Node*, NodeSetHelper> input;
+#endif
 };
 
 typedef std::shared_ptr<Codes> PCodes;
