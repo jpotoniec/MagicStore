@@ -155,7 +155,7 @@ static size zeroCopySizeAlignment (size requiredSize)
     return requiredSize + (~requiredSize + 1) % 64;   // or even shorter: requiredSize + (-requiredSize) % 64
 }
 
-void GPU::sort(uint32_t *p_input, size arraySize)
+void GPU::sort(uint32_t *p_input, size arraySize) const
 {
     cl::make_kernel<cl::Buffer&,size,size,size> sort(this->ksort);
     cl::CommandQueue queue(context,dev);

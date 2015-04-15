@@ -84,12 +84,13 @@ class BinaryTriples : private boost::noncopyable
         Address level3For2(const Address& a, uint32_t s) const;
         Address level3For12(uint32_t l1, uint32_t l2) const;
         PAbstractIterator iteratorForQuery(const TreePattern::Node* query) const;
-        std::deque<uint32_t> answerCodes(const TreePattern::Node* query) const;
+        std::vector<uint32_t> answerCodes(const TreePattern::Node* query) const;
         void add(uint32_t s, uint32_t p, uint32_t o);
         void add(const BinaryTriple& t);
         void finish();
         void dump(const BinaryTriple& t) const;
         void initGPU();
+        std::vector<uint32_t> flatten(PAbstractIterator i) const;
 
         friend class TripleIterator;
 

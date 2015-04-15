@@ -321,10 +321,10 @@ private:
 };
 
 /// wymga, żeby oba argumenty były posortowane
-template<typename A,typename B>
-std::deque<uint32_t> intersect(const A& a, const B& b)
+template<typename A>
+A intersect(const A& a, const A& b)
 {
-    std::deque<uint32_t> result;
+    A result;
     auto i=a.begin();
     auto j=b.begin();
     while(i!=a.end() && j!=b.end())
@@ -343,15 +343,19 @@ std::deque<uint32_t> intersect(const A& a, const B& b)
     return result;
 }
 
-std::deque<uint32_t> flatten(PAbstractIterator i)
+std::vector<uint32_t> BinaryTriples::flatten(PAbstractIterator i) const
 {
-    std::deque<uint32_t> result;
+    std::vector<uint32_t> result;
     if(i!=NULL)
     {
         while(i->hasNext())
             result.push_back(i->next());
         if(!i->isSorted())
+#if USE_GPU
+            gpu.sort(result.data(), result.size());
+#else
             std::sort(result.begin(),result.end());
+#endif
     }
     return result;
 }
@@ -376,13 +380,13 @@ PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query
     return NULL;
 }
 
-std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) const
+std::vector<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) const
 {
     if(query->children().empty())
         return flatten(iteratorForQuery(query));
     else
     {
-        std::deque<uint32_t> subjects=answerCodes(query->children()[0].second);
+        std::vector<uint32_t> subjects=answerCodes(query->children()[0].second);
         for(int i=1;i<query->children().size();++i)
         {
             if(subjects.empty())
@@ -392,7 +396,7 @@ std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) 
         if(!query->isRoot())
         {
             uint32_t p=(*pCodes)[query->parentProperty()];
-            std::deque<uint32_t> result;
+            std::vector<uint32_t> result;
             Address paddr=level2For1(p);
 #if USE_GPU
             std::deque<FindArgs> r;
@@ -406,14 +410,25 @@ std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) 
             {
                 auto oaddr=level3For2(paddr, o);
 #endif
+#if 1
                 auto i=Iterator<false>(level3, oaddr);
                 while(i.hasNext())
                 {
                     uint32_t s=i.next();
                     result.push_back(s);
                 }
+#else
+                for(size i=oaddr.first;i<oaddr.second;)
+                {
+                    result.push_back(read(level3,i));
+                }
+#endif
             }
+#if USE_GPU
+            gpu.sort(result.data(), result.size());
+#else
             std::sort(result.begin(), result.end());
+#endif
             return result;
         }
         else
@@ -423,7 +438,7 @@ std::deque<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) 
 
 std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) const
 {
-    std::deque<uint32_t> codes=answerCodes(query);
+    std::vector<uint32_t> codes=answerCodes(query);
     std::deque<std::string> result;
     for(auto b:codes)
         result.push_back(soCodes->decode(b));

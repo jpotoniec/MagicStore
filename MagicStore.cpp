@@ -285,9 +285,6 @@ public:
 
 int main(int argc, char **argv)
 {
-    GPU gpu;
-    gpu.testSort();
-    return 0;
     if(argc==1)
     {
         return 1;

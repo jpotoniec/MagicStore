@@ -16,7 +16,7 @@ public:
     void setData(uint8_t *data, size length);
     std::deque<Address> find(std::deque<FindArgs> &requests) const;
     void test();
-    void sort(uint32_t *p_input, size arraySize);
+    void sort(uint32_t *p_input, size arraySize) const;
     void testSort();
 private:
     cl::Program load(const std::string& text);
