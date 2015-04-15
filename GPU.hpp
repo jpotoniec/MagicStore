@@ -4,10 +4,6 @@
 #if USE_GPU
 
 #include "FindArgs.h"
-#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
-#include <CL/cl.h>
-#undef CL_VERSION_1_2
-#include <CL/cl.hpp>
 #include <deque>
 #include <string>
 #include <boost/noncopyable.hpp>
@@ -23,7 +19,6 @@ public:
     void sort(uint32_t *p_input, size arraySize);
     void testSort();
 private:
-    void sort2(uint32_t *p_input, size arraySize);
     cl::Program load(const std::string& text);
     cl::Device dev;
     cl::Context context;

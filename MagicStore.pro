@@ -28,7 +28,7 @@ HEADERS += \
     BinaryHelpers.h \
     Types.h
 
-KERNELS = kernel.cl BitonicSort.cl
+KERNELS = kernel.cl Sort.cl
 preprocess.name = Preprocess OpenCL kernels
 preprocess.input = KERNELS
 preprocess.output = ${QMAKE_FILE_BASE}.cpp

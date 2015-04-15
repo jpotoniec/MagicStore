@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iterator>
 #include "FindArgs.h"
+#include <cassert>
 
 #if USE_GPU
 
@@ -109,23 +110,27 @@ std::deque<Address> GPU::find(std::deque<FindArgs> &requests) const
 
 void GPU::testSort()
 {
-    size n=15;
+    size n=1e7;
     uint32_t *data=new uint32_t[n];
     for(int i=0;i<n;++i)
-        data[i]=rand()%20;
+        data[i]=rand();
+#if 0
     for(int i=0;i<n;++i)
         std::cout<<data[i]<<" ";
     std::cout<<"\n";
+#endif
     sort(data, n);
+#if 0
     for(int i=0;i<n;++i)
         std::cout<<data[i]<<" ";
     std::cout<<"\n";
+#endif
     for(int i=1;i<n;++i)
         if(data[i-1]>data[i])
             std::cout<<"Zonk@"<<i<<std::endl;
 }
 
-extern const char *BitonicSort_cl;
+extern const char *Sort_cl;
 
 static size zeroCopySizeAlignment (size requiredSize)
 {
@@ -136,60 +141,44 @@ static size zeroCopySizeAlignment (size requiredSize)
 
 void GPU::sort(uint32_t *p_input, size arraySize)
 {
-    uint32_t *ptr=p_input;
-    for(uint8_t i=8*sizeof(arraySize);i>=2;i--)
-    {
-        size mask=(1<<i);
-        if(arraySize&mask)
-        {
-            sort2(ptr, mask);
-            ptr+=mask;
-        }
-    }
-}
-
-//wymaga, żeby arraySize było potęgą dwójki
-void GPU::sort2(uint32_t *p_input, size arraySize)
-{
-
+    cl::make_kernel<cl::Buffer&,size,size,size>
+    ksort=cl::Kernel(load(Sort_cl),"sort");
     cl::CommandQueue queue(context,dev);
-    ksort=cl::Kernel(load(BitonicSort_cl),"BitonicSort");
-
-    cl_int numStages = 0;
-    cl_uint temp;
-
-    cl_int stage;
-    cl_int passOfStage;
-
-    cl::Buffer inputBuffer(context, CL_MEM_USE_HOST_PTR, zeroCopySizeAlignment(sizeof(uint32_t) * arraySize), p_input);
-
-    for (temp = arraySize; temp > 2; temp >>= 1)
+    size ceiling=1;
+    while(ceiling<arraySize)
+        ceiling<<=1;
+    cl::Buffer inputBuffer(context, CL_MEM_READ_WRITE, sizeof(uint32_t)*ceiling);
+    queue.enqueueWriteBuffer(inputBuffer, false, 0, sizeof(uint32_t)*arraySize, p_input);
     {
-        numStages++;
+        // z jakiejś przyczyny segfaultuje nawet na pocl
+        //    queue.enqueueFillBuffer(inputBuffer, std::numeric_limits<uint32_t>::max(), 0, sizeof(uint32_t)*ceiling);
+        size rest=ceiling-arraySize;
+        uint32_t *pattern=new uint32_t[rest];
+        std::fill(pattern, pattern+rest, std::numeric_limits<uint32_t>::max());
+        queue.enqueueWriteBuffer(inputBuffer, false, sizeof(uint32_t)*arraySize, rest*sizeof(uint32_t), pattern);
+        delete []pattern;
+//  ekstremalnie powolne
+//        uint32_t pattern=std::numeric_limits<uint32_t>::max();
+//        for(size n=arraySize;n<ceiling;++n)
+//            queue.enqueueWriteBuffer(inputBuffer, false, n*sizeof(uint32_t), sizeof(pattern), &pattern);
     }
-
-    cl::make_kernel<cl::Buffer&,cl_uint, cl_uint, cl_uint> sort(ksort);
-
-    for (stage = 0; stage < numStages; stage++)
+    for(size n=1;(1<<n)<=ceiling;n++)
     {
-        for (passOfStage = stage; passOfStage >= 0; passOfStage--)
+        for(size k=n; k>=1; k--)
         {
-            // set work-item dimensions
-            size_t gsz = arraySize / (2*4);
-            size_t global_work_size = ( passOfStage ? gsz : gsz << 1 );    //number of quad items in input array
-
-            sort(cl::EnqueueArgs(queue,global_work_size), inputBuffer, stage, passOfStage, 1);
-
+            ksort(cl::EnqueueArgs(queue,ceiling/2), inputBuffer, arraySize, n, k);
+#if 0
+            uint32_t *tmp=new uint32_t[ceiling];
+        queue.enqueueReadBuffer(inputBuffer, false, 0, sizeof(uint32_t)*ceiling, tmp);
+        queue.finish();
+        std::cout<<"n="<<n<<" k="<<k<<": ";
+        for(int j=0;j<ceiling;++j)
+            std::cout<<tmp[j]<<" ";
+        std::cout<<"\n";
+        delete []tmp;
+#endif
         }
     }
+    queue.enqueueReadBuffer(inputBuffer, false, 0, sizeof(uint32_t)*arraySize, p_input);
     queue.finish();
-    auto tmp_ptr = queue.enqueueMapBuffer(inputBuffer, true, CL_MAP_READ, 0, sizeof(cl_int) * arraySize);
-    if(tmp_ptr!=p_input)
-    {
-        throw std::runtime_error("clEnqueueMapBuffer failed to return original pointer\n");
-    }
-    queue.finish();
-    queue.enqueueUnmapMemObject(inputBuffer, tmp_ptr);
 }
-
-#endif
