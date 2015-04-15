@@ -87,7 +87,7 @@ void GPU::setData(uint8_t *data, size length)
     }
 }
 
-std::deque<Address> GPU::find(std::deque<FindArgs> &requests) const
+std::deque<Address> GPU::find(std::vector<FindArgs> &requests) const
 {
     cl::CommandQueue queue(context,dev);
 //    std::clog<<"Queue and kernel constructed"<<std::endl;
@@ -95,7 +95,7 @@ std::deque<Address> GPU::find(std::deque<FindArgs> &requests) const
     cl_ulong2 *output=new cl_ulong2[requests.size()];
     cl::Buffer bufOutput(context, CL_MEM_WRITE_ONLY, requests.size()*sizeof(cl_ulong2));
 //    std::clog<<"Output buffer ready"<<std::endl;
-    cl::Buffer bufArgs(context, requests.begin(), requests.end(), true, false);
+    cl::Buffer bufArgs(context, requests.data(), requests.data()+requests.size(), true, true);
 //    std::clog<<"Args buffer ready"<<std::endl;
     cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> find(kfind);
     find(cl::EnqueueArgs(queue, cl::NDRange(requests.size())), *bufData, bufArgs, bufOutput);

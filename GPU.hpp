@@ -14,7 +14,7 @@ public:
     GPU();
     ~GPU();
     void setData(uint8_t *data, size length);
-    std::deque<Address> find(std::deque<FindArgs> &requests) const;
+    std::deque<Address> find(std::vector<FindArgs> &requests) const;
     void test();
     void sort(uint32_t *p_input, size arraySize) const;
     void testSort();

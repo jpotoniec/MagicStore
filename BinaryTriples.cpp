@@ -399,7 +399,8 @@ std::vector<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query)
             std::vector<uint32_t> result;
             Address paddr=level2For1(p);
 #if USE_GPU
-            std::deque<FindArgs> r;
+            std::vector<FindArgs> r;
+            r.reserve(subjects.size());
             for(auto o:subjects)
                 r.push_back(FindArgs(paddr.first,paddr.second,o));
             std::deque<Address> gpuaddr = gpu.find(r);
