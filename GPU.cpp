@@ -164,6 +164,7 @@ void GPU::sort(uint32_t *p_input, size arraySize) const
         ceiling<<=1;
     cl::Buffer inputBuffer(context, CL_MEM_READ_WRITE, sizeof(uint32_t)*ceiling);
     queue.enqueueWriteBuffer(inputBuffer, false, 0, sizeof(uint32_t)*arraySize, p_input);
+    if(ceiling!=arraySize)
     {
         // z jakiejś przyczyny segfaultuje nawet na pocl
         //    queue.enqueueFillBuffer(inputBuffer, std::numeric_limits<uint32_t>::max(), 0, sizeof(uint32_t)*ceiling);
