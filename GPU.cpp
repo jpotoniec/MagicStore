@@ -182,3 +182,4 @@ void GPU::sort(uint32_t *p_input, size arraySize)
     queue.enqueueReadBuffer(inputBuffer, false, 0, sizeof(uint32_t)*arraySize, p_input);
     queue.finish();
 }
+#endif
