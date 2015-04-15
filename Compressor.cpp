@@ -36,6 +36,13 @@ void Codes::inc(const std::string &label)
     (*i.first)->inc();
 }
 
+static size_t countLeaves(const Node *root)
+{
+    if(!root->getLabel().empty())
+        return 1;
+    return countLeaves(root->getLeft())+countLeaves(root->getRight());
+}
+
 void Codes::compress()
 {
 	std::priority_queue<Node*,std::deque<Node*>,NodesOrder> nodes;
@@ -55,7 +62,10 @@ void Codes::compress()
 		Node *r=nodes.top();
 		nodes.pop();        
 		nodes.push(new Node("",l->getOccurences()+r->getOccurences(),l,r));
-	}
+    }
+#if USE_UNORDERED_MAP
+    valToCode.rehash(countLeaves(root));
+#endif
     MakeCode(root, 0);
 }
 

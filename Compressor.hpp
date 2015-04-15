@@ -3,10 +3,14 @@
 
 #include <boost/noncopyable.hpp>
 #include <cstdint>
-#include <map>
 #include <cassert>
 #include <memory>
 #include <iosfwd>
+#if USE_UNORDERED_MAP
+#include <unordered_map>
+#else
+#include <map>
+#endif
 #if USE_UNORDERED_SET
 #include <unordered_set>
 #else
@@ -126,7 +130,11 @@ class Codes : private boost::noncopyable
         void save(std::ofstream& f) const;
 	private:
         void MakeCode(const Node *root, uint32_t prefix, uint8_t len=0);
+#if USE_UNORDERED_MAP
+        std::unordered_map<std::string,uint32_t> valToCode;
+#else
         std::map<std::string,uint32_t> valToCode;
+#endif
 		Node *root;
 #if USE_UNORDERED_SET
         std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
