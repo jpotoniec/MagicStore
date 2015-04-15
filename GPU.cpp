@@ -4,7 +4,7 @@
 #include <iterator>
 #include "FindArgs.h"
 #include <cassert>
-#include <ctime>
+#include "Timer.hpp"
 #include <algorithm>
 
 #if USE_GPU
@@ -124,19 +124,19 @@ void GPU::testSort()
         std::cout<<data[i]<<" ";
     std::cout<<"\n";
 #endif
-    auto t1=std::clock();
+    auto t1=ustimer();
     for(int i=0;i<10;++i)
     {
         std::copy(orig, orig+n, data);
         sort(data, n);
     }
-    auto t2=std::clock();
+    auto t2=ustimer();
     for(int i=0;i<10;++i)
     {
         std::copy(orig, orig+n, data);
         std::sort(data, data+n);
     }
-    auto t3=std::clock();
+    auto t3=ustimer();
     std::cout<<"gpu: "<<(t2-t1)<<" cpu:"<<(t3-t2)<<std::endl;
 #if 0
     for(int i=0;i<n;++i)

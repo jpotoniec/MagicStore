@@ -1,13 +1,13 @@
 #include "Triple.hpp"
 #include "TreePattern.hpp"
 #include "BinaryTriples.hpp"
+#include "Timer.hpp"
 #include <iostream>
 #include <map>
 #include <queue>
 #include <iterator>
 #include <cassert>
 #include <algorithm>
-#include <ctime>
 
 const std::string ub="http://swat.cse.lehigh.edu/onto/univ-bench.owl#";
 const std::string rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
@@ -283,15 +283,6 @@ public:
     PCodes pCodes;
 };
 
-#include <sys/time.h>
-
-uint64_t timeofday()
-{
-    timeval tv;
-    gettimeofday(&tv, NULL);
-    return static_cast<uint64_t>(tv.tv_sec)*1e6+tv.tv_usec;
-}
-
 int main(int argc, char **argv)
 {
     if(argc==1)
@@ -350,12 +341,12 @@ int main(int argc, char **argv)
         std::ifstream f(argv[2]);
         BinaryTriples bt;
         bt.load(f);
-        std::clock_t start=timeofday();
+        auto start=ustimer();
         int n=10;
         std::deque<std::string> result;
         for(int i=0;i<n;++i)
             result=bt.answer(query);
-        std::clock_t end=timeofday();
+        auto end=ustimer();
         double avg=static_cast<double>(end-start)/n/CLOCKS_PER_SEC;
         std::cout<<"avg="<<avg<<" (over "<<n<<" tries)"<<std::endl;
         if(result.size()<100)

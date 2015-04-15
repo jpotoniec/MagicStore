@@ -26,7 +26,8 @@ HEADERS += \
     GPU.hpp \
     FindArgs.h \
     BinaryHelpers.h \
-    Types.h
+    Types.h \
+    Timer.hpp
 
 KERNELS = kernel.cl Sort.cl
 preprocess.name = Preprocess OpenCL kernels
