@@ -4,10 +4,13 @@
 #include <iterator>
 #include "FindArgs.h"
 #include <cassert>
+#include <ctime>
+#include <algorithm>
 
 #if USE_GPU
 
 extern const char *kernel_cl;
+extern const char *Sort_cl;
 
 cl::Program GPU::load(const std::string& text)
 {
@@ -58,6 +61,7 @@ GPU::GPU()
     context=cl::Context(dev);
     prog=load(kernel_cl);
     kfind=cl::Kernel(prog,"kfind");
+    ksort=cl::Kernel(load(Sort_cl),"sort");
 }
 
 GPU::~GPU()
@@ -110,16 +114,30 @@ std::deque<Address> GPU::find(std::deque<FindArgs> &requests) const
 
 void GPU::testSort()
 {
-    size n=1e7;
+    size n=1e8;
     uint32_t *data=new uint32_t[n];
+    uint32_t *orig=new uint32_t[n];
     for(int i=0;i<n;++i)
-        data[i]=rand();
+        orig[i]=rand();
 #if 0
     for(int i=0;i<n;++i)
         std::cout<<data[i]<<" ";
     std::cout<<"\n";
 #endif
-    sort(data, n);
+    auto t1=std::clock();
+    for(int i=0;i<10;++i)
+    {
+        std::copy(orig, orig+n, data);
+        sort(data, n);
+    }
+    auto t2=std::clock();
+    for(int i=0;i<10;++i)
+    {
+        std::copy(orig, orig+n, data);
+        std::sort(data, data+n);
+    }
+    auto t3=std::clock();
+    std::cout<<"gpu: "<<(t2-t1)<<" cpu:"<<(t3-t2)<<std::endl;
 #if 0
     for(int i=0;i<n;++i)
         std::cout<<data[i]<<" ";
@@ -130,8 +148,6 @@ void GPU::testSort()
             std::cout<<"Zonk@"<<i<<std::endl;
 }
 
-extern const char *Sort_cl;
-
 static size zeroCopySizeAlignment (size requiredSize)
 {
     // Please refer to Intel Zero Copy Tutorial and OpenCL Performance Guide
@@ -141,8 +157,7 @@ static size zeroCopySizeAlignment (size requiredSize)
 
 void GPU::sort(uint32_t *p_input, size arraySize)
 {
-    cl::make_kernel<cl::Buffer&,size,size,size>
-    ksort=cl::Kernel(load(Sort_cl),"sort");
+    cl::make_kernel<cl::Buffer&,size,size,size> sort(this->ksort);
     cl::CommandQueue queue(context,dev);
     size ceiling=1;
     while(ceiling<arraySize)
@@ -166,7 +181,7 @@ void GPU::sort(uint32_t *p_input, size arraySize)
     {
         for(size k=n; k>=1; k--)
         {
-            ksort(cl::EnqueueArgs(queue,ceiling/2), inputBuffer, arraySize, n, k);
+            sort(cl::EnqueueArgs(queue,ceiling/2), inputBuffer, arraySize, n, k);
 #if 0
             uint32_t *tmp=new uint32_t[ceiling];
         queue.enqueueReadBuffer(inputBuffer, false, 0, sizeof(uint32_t)*ceiling, tmp);
