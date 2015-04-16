@@ -74,6 +74,7 @@ class BinaryTriples : private boost::noncopyable
         void fill(PCodes soCodes, PCodes pCodes,RawBinaryTriples& triples);
         void merge(const BinaryTriples& a, const BinaryTriples& b);
         std::deque<std::string> answer(const TreePattern::Node* query) const;
+        size count(const TreePattern::Node* query) const;
         bool ask(const TreePattern::Node* query, uint32_t s) const;
         BinaryTriples();
         ~BinaryTriples();

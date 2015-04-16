@@ -437,6 +437,11 @@ std::vector<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query)
     }
 }
 
+size BinaryTriples::count(const TreePattern::Node* query) const
+{
+    return answerCodes(query).size();
+}
+
 std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) const
 {
     std::vector<uint32_t> codes=answerCodes(query);

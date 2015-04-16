@@ -341,18 +341,31 @@ int main(int argc, char **argv)
         std::ifstream f(argv[2]);
         BinaryTriples bt;
         bt.load(f);
-        auto start=ustimer();
+        uint64_t start,end;
         int n=10;
-        std::deque<std::string> result;
-        for(int i=0;i<n;++i)
-            result=bt.answer(query);
-        auto end=ustimer();
-        double avg=static_cast<double>(end-start)/n/CLOCKS_PER_SEC;
+        if(argv[1][1]=='c')
+        {
+            start=ustimer();
+            size result;
+            for(int i=0;i<n;++i)
+                result=bt.count(query);
+            end=ustimer();
+            std::cout<<"count="<<result<<std::endl;
+        }
+        else
+        {
+            std::deque<std::string> result;
+            start=ustimer();
+            for(int i=0;i<n;++i)
+                result=bt.answer(query);
+            end=ustimer();
+            if(result.size()<100)
+                for(auto i:result)
+                    std::cout<<i<<"\n";
+            std::cout<<"# of rows: "<<result.size()<<std::endl;
+        }
+        double avg=static_cast<double>(end-start)/n/1e6;
         std::cout<<"avg="<<avg<<" (over "<<n<<" tries)"<<std::endl;
-        if(result.size()<100)
-            for(auto i:result)
-                std::cout<<i<<"\n";
-        std::cout<<"# of rows: "<<result.size()<<std::endl;
     }
     return 0;
 }
