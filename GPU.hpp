@@ -18,6 +18,8 @@ public:
     void test();
     void sort(uint32_t *p_input, size arraySize) const;
     void testSort();
+    void merge(uint32_t *input, size *positions, size n) const;
+    void testMerge();
 private:
     cl::Program load(const std::string& text);
     cl::Device dev;
@@ -26,7 +28,7 @@ private:
     cl::Buffer *bufData;
     const uint8_t *data;
     size length;
-    cl::Kernel kfind,ksort;
+    cl::Kernel kfind,ksort,kmerge;
 };
 
 #endif

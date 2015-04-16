@@ -400,6 +400,7 @@ std::vector<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query)
             Address paddr=level2For1(p);
 #if USE_GPU
             std::vector<FindArgs> r;
+            std::vector<size> positions({0});
             r.reserve(subjects.size());
             for(auto o:subjects)
                 r.push_back(FindArgs(paddr.first,paddr.second,o));
@@ -424,9 +425,10 @@ std::vector<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query)
                     result.push_back(read(level3,i));
                 }
 #endif
+                positions.push_back(result.size());
             }
 #if USE_GPU
-            gpu.sort(result.data(), result.size());
+            gpu.merge(result.data(), positions.data(), gpuaddr.size());
 #else
             std::sort(result.begin(), result.end());
 #endif

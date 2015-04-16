@@ -21,7 +21,7 @@ void kernel kfind(global const uchar* data, global const FindArgs* params, globa
     {
         b=read64(data+args.begin,d);
         d+=8;
-        read(data+args.begin,&d);
+        skip(data+args.begin,&d);
         e=read64(data+args.begin,d);
     }
     result[get_global_id(0)].x=b;

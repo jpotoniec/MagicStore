@@ -61,7 +61,9 @@ GPU::GPU()
     context=cl::Context(dev);
     prog=load(kernel_cl);
     kfind=cl::Kernel(prog,"kfind");
-    ksort=cl::Kernel(load(Sort_cl),"sort");
+    prog=load(Sort_cl);
+    ksort=cl::Kernel(prog,"sort");
+    kmerge=cl::Kernel(prog,"merge");
 }
 
 GPU::~GPU()
@@ -153,6 +155,49 @@ static size zeroCopySizeAlignment (size requiredSize)
     // Please refer to Intel Zero Copy Tutorial and OpenCL Performance Guide
     // The following statement rounds requiredSize up to the next 64-byte boundary
     return requiredSize + (~requiredSize + 1) % 64;   // or even shorter: requiredSize + (-requiredSize) % 64
+}
+
+void GPU::merge(uint32_t *input, size *positions, size n) const
+{
+    cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> merge(this->kmerge);
+    cl::CommandQueue queue(context,dev);
+    size len=positions[n];
+    cl::Buffer inputBuffer(context, CL_MEM_READ_WRITE, sizeof(uint32_t)*len);
+    queue.enqueueWriteBuffer(inputBuffer, false, 0, sizeof(uint32_t)*len, input);
+    cl::Buffer outputBuffer(context, CL_MEM_READ_WRITE, sizeof(uint32_t)*len);
+    cl::Buffer positionsBuffer(context, CL_MEM_READ_WRITE, sizeof(size)*(n+1));
+    if(n%2)
+        queue.enqueueCopyBuffer(inputBuffer, outputBuffer, sizeof(uint32_t)*positions[n-1],sizeof(uint32_t)*positions[n-1], (positions[n]-positions[n-1])*sizeof(uint32_t));    //kopiowanie ostatniego fragmentu, który przez pewien czas może nie być mergowany (jak długo jest nieparzysta liczba list)
+    while(n>1)
+    {
+//        std::clog<<n<<": ";
+//        std::copy(positions,positions+n+1,std::ostream_iterator<size>(std::clog," "));
+//        std::clog<<std::endl;
+        queue.enqueueWriteBuffer(positionsBuffer, false, 0, (n+1)*sizeof(size), positions);
+        merge(cl::EnqueueArgs(queue,n/2),inputBuffer,outputBuffer,positionsBuffer);
+        size o=n;
+        n-=n/2;
+        for(size i=0;i<n+1-o%2;++i)
+            positions[i]=positions[2*i];
+        if(o%2)
+            positions[n]=positions[o];
+        std::swap(inputBuffer,outputBuffer);
+    }
+    queue.enqueueReadBuffer(inputBuffer, false, 0, sizeof(uint32_t)*len, input);
+    queue.finish();
+}
+
+void GPU::testMerge()
+{
+    uint32_t data[]={1,5,10,15,20,
+                     16,17,18,
+                     2,3,4,
+                     6,7,8,9};
+    size positions[]={0,5,8,11,15};
+    size n=sizeof(positions)/sizeof(positions[0])-1;
+    merge(data, positions, n);
+    std::copy(data, data+positions[n], std::ostream_iterator<uint32_t>(std::cout," "));
+    std::cout<<std::endl;
 }
 
 void GPU::sort(uint32_t *p_input, size arraySize) const
