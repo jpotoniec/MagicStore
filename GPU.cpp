@@ -64,6 +64,7 @@ GPU::GPU()
     prog=load(Sort_cl);
     ksort=cl::Kernel(prog,"sort");
     kmerge=cl::Kernel(prog,"merge");
+    kupdatePositions=cl::Kernel(prog,"updatePositions");
 }
 
 GPU::~GPU()
@@ -160,12 +161,14 @@ static size zeroCopySizeAlignment (size requiredSize)
 void GPU::merge(uint32_t *input, size *positions, size n) const
 {
     cl::make_kernel<cl::Buffer&,cl::Buffer&,cl::Buffer&> merge(this->kmerge);
+    cl::make_kernel<cl::Buffer&,size,size> updatePositions(this->kupdatePositions);
     cl::CommandQueue queue(context,dev);
     size len=positions[n];
     cl::Buffer inputBuffer(context, CL_MEM_READ_WRITE, sizeof(uint32_t)*len);
     queue.enqueueWriteBuffer(inputBuffer, false, 0, sizeof(uint32_t)*len, input);
     cl::Buffer outputBuffer(context, CL_MEM_READ_WRITE, sizeof(uint32_t)*len);
     cl::Buffer positionsBuffer(context, CL_MEM_READ_WRITE, sizeof(size)*(n+1));
+    queue.enqueueWriteBuffer(positionsBuffer, false, 0, (n+1)*sizeof(size), positions);
     if(n%2)
         queue.enqueueCopyBuffer(inputBuffer, outputBuffer, sizeof(uint32_t)*positions[n-1],sizeof(uint32_t)*positions[n-1], (positions[n]-positions[n-1])*sizeof(uint32_t));    //kopiowanie ostatniego fragmentu, który przez pewien czas może nie być mergowany (jak długo jest nieparzysta liczba list)
     while(n>1)
@@ -173,14 +176,10 @@ void GPU::merge(uint32_t *input, size *positions, size n) const
 //        std::clog<<n<<": ";
 //        std::copy(positions,positions+n+1,std::ostream_iterator<size>(std::clog," "));
 //        std::clog<<std::endl;
-        queue.enqueueWriteBuffer(positionsBuffer, false, 0, (n+1)*sizeof(size), positions);
         merge(cl::EnqueueArgs(queue,n/2),inputBuffer,outputBuffer,positionsBuffer);
         size o=n;
         n-=n/2;
-        for(size i=0;i<n+1-o%2;++i)
-            positions[i]=positions[2*i];
-        if(o%2)
-            positions[n]=positions[o];
+        updatePositions(cl::EnqueueArgs(queue,1),positionsBuffer,o,n);
         std::swap(inputBuffer,outputBuffer);
     }
     queue.enqueueReadBuffer(inputBuffer, false, 0, sizeof(uint32_t)*len, input);

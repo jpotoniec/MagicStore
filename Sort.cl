@@ -54,3 +54,11 @@ __kernel void merge(__global uint32_t *input, __global uint32_t *output, __globa
         }
     }
 }
+
+__kernel void updatePositions(__global size *positions,size o,size n)
+{
+    for(size i=0;i<n+1-o%2;++i)
+        positions[i]=positions[2*i];
+    if(o%2)
+        positions[n]=positions[o];
+}

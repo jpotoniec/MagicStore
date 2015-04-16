@@ -28,7 +28,7 @@ private:
     cl::Buffer *bufData;
     const uint8_t *data;
     size length;
-    cl::Kernel kfind,ksort,kmerge;
+    cl::Kernel kfind,ksort,kmerge,kupdatePositions;
 };
 
 #endif
