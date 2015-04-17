@@ -25,7 +25,7 @@ namespace TreePattern
 			}
             bool isDefined() const
             {
-                return _label[0]!='?';
+                return defined;
             }
 			const Node* parent() const
 			{
@@ -43,7 +43,7 @@ namespace TreePattern
 			{
                 return parent()==NULL;
 			}
-			static Node* fromTriples(const std::deque<Triple>& triples);
+            static Node* fromSPARQL(const std::string& sparql);
 			void dump(std::ostream& o, const std::string& prefix="") const;
             void sort()
             {
@@ -52,7 +52,7 @@ namespace TreePattern
                 std::sort(_children.begin(), _children.end(), [](const std::pair<std::string,Node*>& a, const std::pair<std::string,Node*>& b)->bool{return a.second->height()>b.second->height();});
             }
 		private:
-			explicit Node(const std::string& label)
+            explicit Node(const std::string& label, bool defined)
 				:_parent(NULL),_label(label)
 			{
 			}
@@ -68,6 +68,7 @@ namespace TreePattern
 			std::string _parentProperty;
 			Children _children;
 			std::string _label;
+            bool defined;
             size_t height() const
             {
                 if(_children.empty())

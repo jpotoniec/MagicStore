@@ -4,7 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 CONFIG += link_pkgconfig
-PKGCONFIG += raptor2 redland OpenCL libmicrohttpd
+PKGCONFIG += raptor2 redland OpenCL libmicrohttpd rasqal
 QMAKE_CXXFLAGS += -std=c++11 -D__CL_ENABLE_EXCEPTIONS=1 -DUSE_GPU=1 -DUSE_UNORDERED_SET=1
 QMAKE_LFLAGS += -std=c++11
 

@@ -41,51 +41,6 @@ std::string resolve(const std::string& input)
     return input;
 }
 
-Triples parseSparql(const std::string& sparql)
-{
-    Triples result;
-    std::string t[3];
-    int pos=0;
-    for(auto i=0;i<sparql.length();++i)
-    {
-        char c=sparql[i];
-        if(isspace(c))
-        {
-            if(pos<2 && !t[pos].empty())
-                pos++;
-            continue;
-        }
-        if(c=='<')
-        {
-            i++;
-            for(;sparql[i]!='>';++i)
-                t[pos]+=sparql[i];
-            continue;
-        }
-        if(c=='.' || c==',' || c==';')
-        {
-            result.push_back(Triple(resolve(t[0]),resolve(t[1]),resolve(t[2])));
-            switch(c)
-            {
-            case '.':
-                pos=0;
-                break;
-            case ';':
-                pos=1;
-                break;
-            case ',':
-                pos=2;
-                break;
-            }
-            for(auto j=pos;j<=2;++j)
-                t[j]="";
-            continue;
-        }
-        t[pos]+=c;
-    }
-    return result;
-}
-
 typedef std::unique_ptr<BinaryTriples> PBinaryTriples;
 
 #if 0
@@ -295,7 +250,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
                           size_t *upload_data_size, void **con_cls)
 {
     BinaryTriples& bt(*reinterpret_cast<BinaryTriples*>(cls));
-    auto query=std::unique_ptr<TreePattern::Node>(TreePattern::Node::fromTriples(parseSparql(MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND,"query"))));
+    auto query=std::unique_ptr<TreePattern::Node>(TreePattern::Node::fromSPARQL(MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND,"query")));
     query->sort();
 
     std::string page;
