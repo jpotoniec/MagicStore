@@ -244,19 +244,32 @@ public:
 #include <microhttpd.h>
 
 int answer_to_connection (void *cls, struct MHD_Connection *connection,
-                          const char *url,
-                          const char *method, const char *version,
-                          const char *upload_data,
-                          size_t *upload_data_size, void **con_cls)
+                          const char */*url*/,
+                          const char */*method*/, const char */*version*/,
+                          const char */*upload_data*/,
+                          size_t */*upload_data_size*/, void **/*con_cls*/)
 {
-    BinaryTriples& bt(*reinterpret_cast<BinaryTriples*>(cls));
-    auto query=std::unique_ptr<TreePattern::Node>(TreePattern::Node::fromSPARQL(MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND,"query")));
-    query->sort();
-
     std::string page;
-    std::deque<std::string> answer = bt.answer(query.get());
-    for(auto& a:answer)
-        page+=a+"\n";
+    try
+    {
+        BinaryTriples& bt(*reinterpret_cast<BinaryTriples*>(cls));
+        auto query=TreePattern::Query::fromSPARQL(MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND,"query"));
+
+        if(query.isCount())
+        {
+            page=query.variable()+"="+std::to_string(bt.count(query.where()));
+        }
+        else
+        {
+            std::deque<std::string> answer = bt.answer(query.where());
+            for(auto& a:answer)
+                page+=a+"\n";
+        }
+    }
+    catch(const std::exception& e)
+    {
+        page=e.what();
+    }
 
     struct MHD_Response *response;
     int ret;

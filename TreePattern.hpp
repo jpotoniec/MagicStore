@@ -42,8 +42,7 @@ namespace TreePattern
 			bool isRoot() const
 			{
                 return parent()==NULL;
-			}
-            static Node* fromSPARQL(const std::string& sparql);
+            }
 			void dump(std::ostream& o, const std::string& prefix="") const;
             void sort()
             {
@@ -53,7 +52,7 @@ namespace TreePattern
             }
 		private:
             explicit Node(const std::string& label, bool defined)
-				:_parent(NULL),_label(label)
+                :_parent(NULL),_label(label),defined(defined)
 			{
 			}
 			void parent(Node *parent, const std::string& property)
@@ -76,7 +75,38 @@ namespace TreePattern
                 else
                     return _children[0].second->height()+1;
             }
+            friend class Query;
 	};
+
+    class Query
+    {
+    public:
+        static Query fromSPARQL(const std::string& sparql);
+        const Node* where() const
+        {
+            return _where;
+        }
+        const std::string variable() const
+        {
+            return _var;
+        }
+        bool isCount() const
+        {
+            return _count;
+        }
+        ~Query()
+        {
+            delete _where;
+        }
+    private:
+        Query(Node *where, const std::string& var, bool count)
+            :_where(where),_var(var),_count(count)
+        {
+        }
+        Node *_where;
+        std::string _var;
+        bool _count;
+    };
 }
 
 #endif //TREEPATTERNHPP
