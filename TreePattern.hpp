@@ -26,7 +26,7 @@ namespace TreePattern
 			}
             bool isDefined() const
             {
-                return _label[0]!='?';
+                return defined;
             }
 			const Node* parent() const
 			{
@@ -43,19 +43,17 @@ namespace TreePattern
 			bool isRoot() const
 			{
                 return parent()==NULL;
-			}
-			static Node* fromTriples(const std::deque<Triple>& triples);
+            }
 			void dump(std::ostream& o, const std::string& prefix="") const;
             void sort()
             {
-                //najpierw trzeba zejść rekurencyjnie, żeby obliczanie wysokości działało prawidłowo
-                for(auto c:_children)
-                    c.second->sort();
-                std::sort(_children.begin(), _children.end(), [](const Child& a, const Child& b)->bool{return a.second->height()>b.second->height();});
+                for(auto ch:_children)
+                    ch.second->sort();
+                std::sort(_children.begin(), _children.end(), [](const std::pair<std::string,Node*>& a, const std::pair<std::string,Node*>& b)->bool{return a.second->height()>b.second->height();});
             }
 		private:
-			explicit Node(const std::string& label)
-				:_parent(NULL),_label(label)
+            explicit Node(const std::string& label, bool defined)
+                :_parent(NULL),_label(label),defined(defined)
 			{
 			}
 			void parent(Node *parent, const std::string& property)
@@ -77,7 +75,39 @@ namespace TreePattern
 			std::string _parentProperty;
 			Children _children;
 			std::string _label;
+            bool defined;
+            friend class Query;
 	};
+
+    class Query
+    {
+    public:
+        static Query fromSPARQL(const std::string& sparql);
+        const Node* where() const
+        {
+            return _where;
+        }
+        const std::string variable() const
+        {
+            return _var;
+        }
+        bool isCount() const
+        {
+            return _count;
+        }
+        ~Query()
+        {
+            delete _where;
+        }
+    private:
+        Query(Node *where, const std::string& var, bool count)
+            :_where(where),_var(var),_count(count)
+        {
+        }
+        Node *_where;
+        std::string _var;
+        bool _count;
+    };
 }
 
 #endif //TREEPATTERNHPP

@@ -4,121 +4,26 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
+#include <memory>
+#include "Merger.hpp"
+#include "BinaryHelpers.h"
 
-typedef std::map<std::string,int> Stats;
+const std::pair<size,size> BinaryTriples::invalid=std::pair<size,size>(static_cast<size>(-1),static_cast<size>(-1));
 
-struct TriplesComparator
+BinaryTriples::Address BinaryTriples::level2For1(uint32_t p) const
 {
-    TriplesComparator(const Codes *soCodes, const Codes *pCodes)
-        :soCodes(soCodes),pCodes(pCodes)
+    size d=find(level1, len1, p);
+    if(d!=InvalidPosition)
     {
-    }
-	bool operator()(const Triple& a, const Triple& b)
-    {
-        int c=compare((*pCodes)[a.p()], (*pCodes)[b.p()]);
-        if(c!=0)
-            return c<0;
-        c=compare((*soCodes)[a.o()], (*soCodes)[b.o()]);
-        if(c!=0)
-            return c<0;
-        c=compare((*soCodes)[a.s()], (*soCodes)[b.s()]);
-        return c<0;
-    }
-private:
-    const Codes *soCodes, *pCodes;
-};
-
-
-void write(uint8_t *where, size_t &wlen, const BinaryCode& c)
-{
-    assert(c.length()<=30);
-    size_t len=(c.length()+1)/8;
-    //std::cout<<"For "<<static_cast<uint32_t>(c.length())<<" needed is "<<(len+1)<<" bytes\n";
-    uint32_t val=c.value();
-    switch(len)
-    {
-        case 3:
-            where[wlen+3]=static_cast<uint8_t>((val>>22)&0xff);
-        case 2:
-            where[wlen+2]=static_cast<uint8_t>((val>>14)&0xff);
-        case 1:
-            where[wlen+1]=static_cast<uint8_t>((val>>6)&0xff);
-        case 0:
-            where[wlen+0]=static_cast<uint8_t>((val>>0)&0x3f)|(static_cast<uint8_t>(len)<<6);
-    }
-    wlen+=len+1;
-}
-
-void skip(const uint8_t *where, size_t &position)
-{
-    uint8_t len=(((where[position])>>6)&0b11);
-    position+=len+1;
-}
-
-BinaryCode read(const uint8_t *where, size_t &position)
-{
-    uint8_t len=(((where[position])>>6)&0b11);
-    uint32_t result=0;
-    switch(len)
-    {
-        case 3:
-            result|=static_cast<uint32_t>(where[position+3])<<22;
-        case 2:
-            result|=static_cast<uint32_t>(where[position+2])<<14;
-        case 1:
-            result|=static_cast<uint32_t>(where[position+1])<<6;
-        case 0:
-            result|=static_cast<uint32_t>(where[position+0]&0x3f)<<0;
-    }
-    position+=len+1;
-    return BinaryCode(result, 8*(len+1)-2);
-}
-
-const std::pair<size_t,size_t> BinaryTriples::invalid=std::pair<size_t,size_t>(static_cast<size_t>(-1),static_cast<size_t>(-1));
-
-const uint8_t* BinaryTriples::find(const uint8_t* where, size_t n, uint32_t value, uint8_t length, bool index) const
-{
-    for(size_t i=0;i<n;i+=sizeof(size_t))
-    {
-        BinaryCode c=read(where, i);
-        if(c.value()==value)
-            return where+i;
-        if(index)
-        {
-            size_t pos;
-            memcpy(&pos, where+i, sizeof(size_t));
-        }
-    }
-#if 0
-#error Przedwczesna optymalizacja AKA nie działa
-    uint8_t len=(length-2)/8;
-    for(size_t i=0;i<n;)
-    {
-        uint8_t x=(where[i]>>6);
-        if(x==len && read(where,i).value()==value)
-            return where+i;
-        else
-            i+=x;
-        if(index)
-            i+=sizeof(size_t);
-    }
-#endif
-    return NULL;
-}
-
-BinaryTriples::Address BinaryTriples::level2For1(const BinaryCode& p) const
-{
-    const uint8_t *ptr=find(level1, len1, p.value(), p.length(), true);
-    if(ptr!=NULL)
-    {
-        size_t begin=*reinterpret_cast<const size_t*>(ptr);
-        ptr+=sizeof(size_t);
-        size_t end=len2;
+        const uint8_t *ptr=level1+d;
+        size begin=*reinterpret_cast<const size*>(ptr);
+        ptr+=sizeof(size);
+        size end=len2;
         if(ptr-level1<len1)
         {
-            size_t d=0;
+            size d=0;
             read(ptr,d);
-            end=*reinterpret_cast<const size_t*>(ptr+d);
+            end=*reinterpret_cast<const size*>(ptr+d);
         }
         return std::make_pair(begin,end);
     }
@@ -126,25 +31,26 @@ BinaryTriples::Address BinaryTriples::level2For1(const BinaryCode& p) const
         return invalid;
 }
 
-BinaryTriples::Address BinaryTriples::level3For2(const Address& a, const BinaryCode& s) const
+BinaryTriples::Address BinaryTriples::level3For2(const Address& a, uint32_t s) const
 {
-    size_t len=a.second-a.first;
-    const uint8_t *ptr=find(level2+a.first, len, s.value(), s.length(), true);
-    if(ptr!=NULL)
+    size len=a.second-a.first;
+    size d=find(level2+a.first, len, s);
+    if(d!=InvalidPosition)
     {
-        size_t begin=*reinterpret_cast<const size_t*>(ptr);
-        ptr+=sizeof(size_t);
+        const uint8_t *ptr=level2+a.first+d;
+        size begin=*reinterpret_cast<const size*>(ptr);
+        ptr+=sizeof(size);
         assert(ptr-level2<len2);
-        size_t d=0;
+        size d=0;
         skip(ptr,d);
-        size_t end=*reinterpret_cast<const size_t*>(ptr+d);
+        size end=*reinterpret_cast<const size*>(ptr+d);
         return std::make_pair(begin,end);
     }
     else
         return invalid;
 }
 
-BinaryTriples::Address BinaryTriples::level3For12(const BinaryCode& l1, const BinaryCode& l2) const
+BinaryTriples::Address BinaryTriples::level3For12(uint32_t l1, uint32_t l2) const
 {
     Address sa=level2For1(l1);
     if(sa!=invalid)
@@ -152,55 +58,121 @@ BinaryTriples::Address BinaryTriples::level3For12(const BinaryCode& l1, const Bi
     return invalid;
 }
 
-void BinaryTriples::fill(Triples& triples)
+BinaryTriples::BinaryTriples()
+    :prevP(std::numeric_limits<uint32_t>::max()),prevO(std::numeric_limits<uint32_t>::max())
 {
-    Stats soStats,pStats;
+}
+
+BinaryTriples::~BinaryTriples()
+{
+    delete []level1;
+    delete []level2;
+    delete []level3;
+}
+
+void BinaryTriples::save(std::ofstream& f) const
+{
+    soCodes->save(f);
+    pCodes->save(f);
+    f.write(reinterpret_cast<const char*>(&len1), sizeof(len1));
+    f.write(reinterpret_cast<const char*>(level1), len1);
+    f.write(reinterpret_cast<const char*>(&len2), sizeof(len2));
+    f.write(reinterpret_cast<const char*>(level2), len2);
+    f.write(reinterpret_cast<const char*>(&len3), sizeof(len3));
+    f.write(reinterpret_cast<const char*>(level3), len3);
+}
+
+void BinaryTriples::load(std::ifstream& f)
+{
+    soCodes=PCodes(new Codes());
+    pCodes=PCodes(new Codes());
+    soCodes->load(f);
+    pCodes->load(f);
+    f.read(reinterpret_cast<char*>(&len1), sizeof(len1));
+    level1=new uint8_t[len1];
+    f.read(reinterpret_cast<char*>(level1), len1);
+    f.read(reinterpret_cast<char*>(&len2), sizeof(len2));
+    level2=new uint8_t[len2];
+    f.read(reinterpret_cast<char*>(level2), len2);
+    f.read(reinterpret_cast<char*>(&len3), sizeof(len3));
+    level3=new uint8_t[len3];
+    f.read(reinterpret_cast<char*>(level3), len3);
+    initGPU();
+    std::cout<<"Loaded binary blobs of sizes "<<len1<<"+"<<len2<<"+"<<len3<<" bytes"<<std::endl;
+}
+
+void BinaryTriples::add(uint32_t s, uint32_t p, uint32_t o)
+{
+    if(prevP!=p)
+    {
+        prevP=p;
+        write(level1, len1, p);
+        memcpy(level1+len1, &len2, sizeof(len2));
+        len1+=sizeof(len2);
+        prevO=std::numeric_limits<uint32_t>::max();
+    }
+    if(prevO!=o)
+    {
+        prevO=o;
+        write(level2, len2, o);
+        memcpy(level2+len2, &len3, sizeof(len3));
+        len2+=sizeof(len3);
+    }
+    write(level3, len3, s);
+}
+
+void BinaryTriples::fill(PCodes soCodes, PCodes pCodes, RawBinaryTriples& triples)
+{
+    this->soCodes=soCodes;
+    this->pCodes=pCodes;
+    std::sort(triples.begin(), triples.end());
+    size psize=0,osize=0,ssize=0;
+    uint32_t p(std::numeric_limits<uint32_t>::max()),o(std::numeric_limits<uint32_t>::max());
     for(auto t:triples)
     {
-        soStats[t.s()]++;
-        pStats[t.p()]++;
-        soStats[t.o()]++;
+        if(p!=t.p())
+        {
+            psize++;
+            p=t.p();
+            o=std::numeric_limits<uint32_t>::max();
+        }
+        if(o!=t.o())
+        {
+            osize++;
+            o=t.o();
+        }
     }
-    soCodes=new Codes(soStats);
-    pCodes=new Codes(pStats);
-    std::sort(triples.begin(), triples.end(), TriplesComparator(soCodes, pCodes));
-    level1=new uint8_t[(4+sizeof(size_t))*pStats.size()];
-    memset(level1, 0, (4+sizeof(size_t))*pStats.size());
+    psize*=(4+sizeof(size));
+    osize*=(4+sizeof(size));
+    ssize=4*triples.size();
+    level1=new uint8_t[psize];
     len1=0;
-    level2=new uint8_t[(4+sizeof(size_t))*pStats.size()*soStats.size()];
+    level2=new uint8_t[osize];
     len2=0;
-    level3=new uint8_t[4*triples.size()];
+    level3=new uint8_t[ssize];
     len3=0;
-    BinaryCode prevP,prevO;
     for(auto t:triples)
     {
-        BinaryCode s((*soCodes)[t.s()]);
-        BinaryCode p((*pCodes)[t.p()]);
-        BinaryCode o((*soCodes)[t.o()]);
-        if(prevP!=p)
-        {
-            std::cout<<t.p()<<" "<<p<<"\n";
-            prevP=p;
-            write(level1, len1, p);
-            memcpy(level1+len1, &len2, sizeof(len2));
-            len1+=sizeof(len2);
-            std::cout<<"Written "<<static_cast<uint32_t>(p.length())<<"+32 bits, pLen="<<len1<<"\n";
-            prevO=BinaryCode();
-        }
-        if(prevO!=o)
-        {
-            prevO=o;
-            write(level2, len2, o);
-            memcpy(level2+len2, &len3, sizeof(len3));
-            len2+=sizeof(len3);
-        }
-        write(level3, len3, s);
+        add(t);
+//        std::cout<<t<<" "<<s<<" "<<p<<" "<<o<<"\n";
     }
-    write(level1, len1, BinaryCode(0xffffffff, 30));
+    finish();
+    initGPU();
+}
+
+void BinaryTriples::finish()
+{
+    write(level1, len1, std::numeric_limits<uint32_t>::max());
     memcpy(level1+len1, &len2, sizeof(len2));
-    write(level2, len2, BinaryCode(0xffffffff, 30));
+    write(level2, len2, std::numeric_limits<uint32_t>::max());
     memcpy(level2+len2, &len3, sizeof(len3));
-    std::cout<<"pLen="<<len1<<" sLen="<<len2<<" oLen="<<len3<<"\n";
+}
+
+void BinaryTriples::initGPU()
+{
+#if USE_GPU
+    gpu.setData(level2, len2);
+#endif
 }
 
 class AbstractIterator
@@ -209,7 +181,7 @@ public:
     virtual ~AbstractIterator()
     {
     }
-    virtual BinaryCode next()=0;
+    virtual uint32_t next()=0;
     virtual bool hasNext() const=0;
     virtual bool isSorted() const
     {
@@ -225,11 +197,11 @@ public:
         :data(data),pos(a.first),end(a.second)
     {
     }
-    BinaryCode next()
+    uint32_t next()
     {
-        BinaryCode b=read(data, pos);
+        uint32_t b=read(data, pos);
         if(index)
-            pos+=sizeof(size_t);
+            pos+=sizeof(size);
         return b;
     }
     bool hasNext() const
@@ -242,7 +214,7 @@ public:
     }
 private:
     const uint8_t *data;
-    size_t pos,end;
+    size pos,end;
 };
 
 class DoubleIterator:public AbstractIterator
@@ -256,12 +228,12 @@ public:
     {
         return b.hasNext();
     }
-    BinaryCode next()
+    uint32_t next()
     {
-        BinaryCode x=b.next();
+        uint32_t x=b.next();
         if(!b.hasNext() && pos<end)
         {
-            size_t tmp=nextPos();
+            size tmp=nextPos();
             b=Iterator<false>(data2, BinaryTriples::Address(nextBegin2,tmp));
             nextBegin2=tmp;
         }
@@ -269,39 +241,97 @@ public:
     }
 private:
     const uint8_t *data1,*data2;
-    size_t pos,end;
-    size_t nextBegin2;
+    size pos,end;
+    size nextBegin2;
     Iterator<false> b;
 
-    size_t nextPos()
+    size nextPos()
     {
-        size_t x;
+        size x;
         skip(data1,pos);
-        memcpy(&x,data1+pos,sizeof(size_t));
-        pos+=sizeof(size_t);
+        memcpy(&x,data1+pos,sizeof(size));
+        pos+=sizeof(size);
         return x;
     }
     BinaryTriples::Address init()
     {
-        size_t pos2=nextPos();
+        size pos2=nextPos();
         nextBegin2=nextPos();
         return BinaryTriples::Address(pos2,nextBegin2);
     }
 };
 
-/// wymga, żeby oba argumenty były posortowane
-template<typename A,typename B>
-std::deque<BinaryCode> intersect(const A& a, const B& b)
+size readSize(const uint8_t *data, size &pos)
 {
-    std::deque<BinaryCode> result;
+    size result;
+    memcpy(&result, data+pos, sizeof(size));
+    pos+=sizeof(size);
+    return result;
+}
+
+class TripleIterator
+{
+public:
+    TripleIterator(const BinaryTriples& bt)
+        :bt(bt),p1(0),p2(0),p3(0),n2(0),n3(0),change(false)
+    {
+        l1=read(bt.level1, p1);
+        p2=readSize(bt.level1, p1);
+        n2=nextSize(bt.level1, p1);
+        l2=read(bt.level2, p2);
+        p3=readSize(bt.level2, p2);
+        n3=nextSize(bt.level2, p2);
+    }
+    BinaryTriple next()
+    {
+        uint32_t l3=read(bt.level3, p3);
+        BinaryTriple result(l3,l1,l2);
+//        std::cout<<"p: "<<p3<<" "<<p2<<" "<<p1<<" n: "<<n3<<" "<<n2<<" inf\n";
+        if(p3==n3)
+        {
+            if(p2==n2)
+            {
+                l1=read(bt.level1, p1);
+                size x=readSize(bt.level1, p1);
+                assert(x==p2);
+                n2=nextSize(bt.level1, p1);
+            }
+            l2=read(bt.level2, p2);
+            size x=readSize(bt.level2, p2);
+            assert(x==p3);
+            n3=nextSize(bt.level2,p2);
+        }
+        return result;
+    }
+    bool hasNext()
+    {
+        return p3<bt.len3;
+    }
+private:
+    size nextSize(const uint8_t *data, size n)
+    {
+        skip(data, n);
+        return readSize(data,n);
+    }
+    static const size invalid=std::numeric_limits<size>::max();
+    const BinaryTriples& bt;
+    size p1,p2,p3,n2,n3;
+    uint32_t l2,l1;
+    bool change;
+};
+
+/// wymga, żeby oba argumenty były posortowane
+template<typename A>
+A intersect(const A& a, const A& b)
+{
+    A result;
     auto i=a.begin();
     auto j=b.begin();
     while(i!=a.end() && j!=b.end())
     {
-        int c=compare(*i,*j);
-        if(c<0)
+        if(*i<*j)
             i++;
-        else if(c>0)
+        else if(*i>*j)
             j++;
         else
         {
@@ -313,87 +343,50 @@ std::deque<BinaryCode> intersect(const A& a, const B& b)
     return result;
 }
 
-std::deque<BinaryCode> flatten(AbstractIterator *i)
-{    
-    std::deque<BinaryCode> result;
+std::vector<uint32_t> BinaryTriples::flatten(PAbstractIterator i) const
+{
+    std::vector<uint32_t> result;
     if(i!=NULL)
     {
         while(i->hasNext())
             result.push_back(i->next());
         if(!i->isSorted())
+#if USE_GPU
+            gpu.sort(result.data(), result.size());
+#else
             std::sort(result.begin(),result.end());
+#endif
     }
     return result;
 }
 
-//polega na posortowaniu, a DoubleIterator tego nie zapewnia
-template<bool i,bool j>
-std::deque<BinaryCode> intersect(Iterator<i>* a, Iterator<j>* b)
-{
-    std::deque<BinaryCode> result;
-    BinaryCode aVal=a->next();
-    BinaryCode bVal=b->next();
-    for(;;)
-    {
-        bool aInc=false;
-        bool bInc=false;
-        int c=compare(aVal,bVal);
-        std::cout<<aVal<<" "<<bVal<<" "<<c<<"\n";
-        if(c<0)
-            aInc=true;
-        else if(c>0)
-            bInc=true;
-        else
-        {
-            aInc=true;
-            bInc=true;
-            result.push_back(aVal);
-        }
-        if(aInc)
-        {
-            if(a->hasNext())
-                aVal=a->next();
-            else
-                break;
-        }
-        if(bInc)
-        {
-            if(b->hasNext())
-                bVal=b->next();
-            else
-                break;
-        }
-    }
-    return result;
-}
-
-AbstractIterator* BinaryTriples::iteratorForQuery(const TreePattern::Node* query) const
+PAbstractIterator BinaryTriples::iteratorForQuery(const TreePattern::Node* query) const
 {
     assert(query->children().empty());
-    BinaryCode p=(*pCodes)[query->parentProperty()];
+    uint32_t p=(*pCodes)[query->parentProperty()];
     if(query->isDefined())
     {
-        BinaryCode o=(*soCodes)[query->label()];
+        uint32_t o=(*soCodes)[query->label()];
         Address a=level3For12(p, o);
         if(a!=invalid)
-            return new Iterator<false>(level3, a);
+            return PAbstractIterator(new Iterator<false>(level3, a));
     }
     else
     {
         Address a=level2For1(p);
         if(a!=invalid)
-            return new DoubleIterator(level2, a, level3);
+            return PAbstractIterator(new DoubleIterator(level2, a, level3));
     }
     return NULL;
 }
 
-std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query) const
+std::vector<uint32_t> BinaryTriples::answerCodes(const TreePattern::Node* query) const
 {
     if(query->children().empty())
         return flatten(iteratorForQuery(query));
     else
     {
-        std::deque<BinaryCode> subjects=answerCodes(query->children()[0].second);
+        std::vector<uint32_t> subjects=answerCodes(query->children()[0].second);
         for(int i=1;i<query->children().size();++i)
         {
             if(subjects.empty())
@@ -402,18 +395,44 @@ std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query
         }
         if(!query->isRoot())
         {
-            BinaryCode p=(*pCodes)[query->parentProperty()];
-            std::deque<BinaryCode> result;
+            uint32_t p=(*pCodes)[query->parentProperty()];
+            std::vector<uint32_t> result;
+            Address paddr=level2For1(p);
+#if USE_GPU
+            std::vector<FindArgs> r;
+            r.reserve(subjects.size());
+            for(auto o:subjects)
+                r.push_back(FindArgs(paddr.first,paddr.second,o));
+            std::deque<Address> gpuaddr = gpu.find(r);
+            std::vector<size> positions({0});
+            positions.reserve(gpuaddr.size()+2);
+            for(auto oaddr:gpuaddr)
+            {
+#else
             for(auto o:subjects)
             {
-                auto i=new Iterator<false>(level3, level3For12(p, o));
-                while(i->hasNext())
+                auto oaddr=level3For2(paddr, o);
+#endif
+#if 1
+                auto i=Iterator<false>(level3, oaddr);
+                while(i.hasNext())
                 {
-                    BinaryCode s=i->next();
+                    uint32_t s=i.next();
                     result.push_back(s);
                 }
+#else
+                for(size i=oaddr.first;i<oaddr.second;)
+                {
+                    result.push_back(read(level3,i));
+                }
+#endif
+                positions.push_back(result.size());
             }
+#if USE_GPU
+            gpu.merge(result.data(), positions.data(), gpuaddr.size());
+#else
             std::sort(result.begin(), result.end());
+#endif
             return result;
         }
         else
@@ -421,11 +440,46 @@ std::deque<BinaryCode> BinaryTriples::answerCodes(const TreePattern::Node* query
     }
 }
 
+size BinaryTriples::count(const TreePattern::Node* query) const
+{
+    return answerCodes(query).size();
+}
+
 std::deque<std::string> BinaryTriples::answer(const TreePattern::Node* query) const
-{    
-    std::deque<BinaryCode> codes=answerCodes(query);
+{
+    std::vector<uint32_t> codes=answerCodes(query);
     std::deque<std::string> result;
     for(auto b:codes)
         result.push_back(soCodes->decode(b));
     return result;
+}
+
+void BinaryTriples::add(const BinaryTriple& t)
+{
+//    std::cout<<"Adding: ";
+//    dump(t);
+    add(t.s(),t.p(),t.o());
+    assert(t.s()!=std::numeric_limits<uint32_t>::max());
+    assert(t.p()!=std::numeric_limits<uint32_t>::max());
+    assert(t.o()!=std::numeric_limits<uint32_t>::max());
+}
+
+void BinaryTriples::dump(const BinaryTriple& t) const
+{
+    std::cout<<t.s()<<" "<<t.p()<<" "<<t.o()<<" "<<soCodes->decode(t.s())<<" "<<pCodes->decode(t.p())<<" "<<soCodes->decode(t.o())<<"\n";
+}
+
+void BinaryTriples::merge(const BinaryTriples& a, const BinaryTriples& b)
+{
+    this->soCodes=a.soCodes;
+    this->pCodes=a.pCodes;
+    level1=new uint8_t[a.len1+b.len1];
+    len1=0;
+    level2=new uint8_t[a.len2+b.len2];
+    len2=0;
+    level3=new uint8_t[a.len3+b.len3];
+    len3=0;
+    ::merge<BinaryTriple>(TripleIterator(a), TripleIterator(b),
+                          [this](const BinaryTriple& t)->void{add(t);},
+    BinaryTriple::compare);
 }

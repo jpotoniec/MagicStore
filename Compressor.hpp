@@ -3,8 +3,19 @@
 
 #include <boost/noncopyable.hpp>
 #include <cstdint>
-#include <map>
 #include <cassert>
+#include <memory>
+#include <iosfwd>
+#if USE_UNORDERED_MAP
+#include <unordered_map>
+#else
+#include <map>
+#endif
+#if USE_UNORDERED_SET
+#include <unordered_set>
+#else
+#include <set>
+#endif
 
 class Node
 {
@@ -34,80 +45,59 @@ class Node
 			assert((left==NULL && right==NULL) || (left!=NULL && right!=NULL));
 			return left!=NULL && right!=NULL;
 		}
-	private:
+        ~Node()
+        {
+            if(left)
+                delete left;
+            if(right)
+                delete right;
+        }
+        void inc()
+        {
+            ++occurences;
+        }
+        static Node* load(std::ifstream& f)
+        {
+            return new Node(f);
+        }
+        void save(std::ofstream& f) const;
+    private:
+        Node(std::ifstream& f);
 		std::string label;
-		int occurences;
+        size_t occurences;
 		const Node *left,*right;
 };
 
-
-template<typename T>
-class TBinaryCode
+class NodeSetHelper
 {
-	public:
-		T value() const {return val;}
-		uint8_t length() const {return len;}
-		void append(bool v)
-		{
-			assert(len<sizeof(val)*8);			
-			if(v)
-                val|=(1<<len);
-			len++;
-		}
-		TBinaryCode(T val, uint8_t len)
-			:val(val),len(len)
-		{
-		}
-		TBinaryCode()
-			:TBinaryCode(0,0)
-		{
-		}
-		friend bool operator==(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-		{
-            return a.val==b.val;
-		}
-		friend bool operator!=(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-		{
-			return !(a==b);
-		}
-        friend bool operator<(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-        {
-            return compare(a,b)<0;
-        }
-        friend int compare(const TBinaryCode<T> &a, const TBinaryCode<T> &b)
-        {
-            if(a.val<b.val)
-                return -1;
-            else if(a.val>b.val)
-                return 1;
-            return 0;
-        }
-	private:
-		T val;
-		uint8_t len;
+public:
+#if USE_UNORDERED_SET
+    size_t operator()(const Node *a) const
+    {
+        return hasher(a->getLabel());
+    }
+    bool operator()(const Node *a, const Node *b) const
+    {
+        return a->getLabel()==b->getLabel();
+    }
+private:
+    std::hash<std::string> hasher;
+#else
+    bool operator()(const Node *a, const Node *b) const
+    {
+        return a->getLabel()<b->getLabel();
+    }
+#endif
 };
-
-#include <iostream>
-template<typename T>
-std::ostream& operator<<(std::ostream& o, const TBinaryCode<T>& c)
-{
-    return o<<std::hex<<c.value()<<"/"<<std::dec<<static_cast<uint32_t>(c.length());
-}
-
-typedef TBinaryCode<uint32_t> BinaryCode;
 
 class Codes : private boost::noncopyable
 {
 	public:
-		const BinaryCode& operator[](const std::string& value) const
+        uint32_t operator[](const std::string& value) const
 		{
 			return valToCode.find(value)->second;
 		}
-        std::string decode(const BinaryCode& code)
-        {
-            return decode(code.value());
-        }
-        std::string decode(uint32_t code)
+        const std::string& decode(uint32_t code) const
         {
             const Node *n=root;
             while(n->hasChildren())
@@ -120,12 +110,39 @@ class Codes : private boost::noncopyable
             }
             return n->getLabel();
         }
-		Codes(const std::map<std::string,int>& stats);
+        Codes()
+            :root(NULL)
+        {
+
+        }
+        ~Codes()
+        {
+            if(root)
+                delete root;
+        }
+        void inc(const std::string& label);
+        void compress();
+        size_t size() const
+        {
+            return valToCode.size();
+        }
+        void load(std::ifstream& f);
+        void save(std::ofstream& f) const;
 	private:
-		void MakeCode(const Node *root, const BinaryCode& prefix);
-		std::map<std::string,BinaryCode> valToCode;
+        void MakeCode(const Node *root, uint32_t prefix, uint8_t len=0);
+#if USE_UNORDERED_MAP
+        std::unordered_map<std::string,uint32_t> valToCode;
+#else
+        std::map<std::string,uint32_t> valToCode;
+#endif
 		Node *root;
+#if USE_UNORDERED_SET
+        std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
+#else
+        std::set<Node*, NodeSetHelper> input;
+#endif
 };
 
+typedef std::shared_ptr<Codes> PCodes;
 
 #endif //COMPRESSORHPP
