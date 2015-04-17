@@ -27,7 +27,8 @@ HEADERS += \
     FindArgs.h \
     BinaryHelpers.h \
     Types.h \
-    Timer.hpp
+    Timer.hpp \
+    Trie.hpp
 
 KERNELS = kernel.cl Sort.cl
 preprocess.name = Preprocess OpenCL kernels

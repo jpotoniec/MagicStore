@@ -19,7 +19,7 @@ void Codes::MakeCode(const Node *root, uint32_t prefix, uint8_t len)
 	if(root!=NULL)
 	{
 		if(!root->getLabel().empty())
-            valToCode.insert(Map::value_type(encode(root->getLabel()), prefix));
+            valToCode.insert(Map::value_type(trie.find(root->getLabel()), prefix));
         uint32_t lcode(prefix);
         uint32_t rcode(prefix|(1<<len));
         MakeCode(root->getLeft(),lcode,len+1);
@@ -66,57 +66,9 @@ void Codes::compress()
     MakeCode(root, 0);
 }
 
-void Codes::makePrefixes()
-{
-    std::deque<const Node*> queue;
-    queue.push_back(root);
-    std::map<std::string,size_t> candidates;
-    while(!queue.empty())
-    {
-        auto node=queue.front();
-        queue.pop_front();
-        if(node->getLeft()!=NULL)
-            queue.push_back(node->getLeft());
-        if(node->getRight()!=NULL)
-            queue.push_back(node->getRight());
-        if(!node->getLabel().empty())
-        {
-            auto i=node->getLabel().find_last_of("/#");
-            if(i!=std::string::npos)
-            {
-                std::string prefix=node->getLabel().substr(0,i+1);
-                candidates[prefix]++;
-            }
-        }
-    }
-    for(auto& c:candidates)
-        if(c.second>=2)
-            prefixes.push_back(c.first);
-    std::sort(prefixes.begin(),prefixes.end());
-    std::clog<<"Found "<<prefixes.size()<<" prefixes out of "<<candidates.size()<<" candidates"<<std::endl;
-}
-
-Codes::URI Codes::encode(const std::string& label) const
-{
-    auto i=label.find_last_of("/#");
-    if(i!=std::string::npos)
-    {
-        std::string prefix=label.substr(0,i+1);
-        std::string localName=label.substr(i+1);
-        auto p=std::equal_range(prefixes.begin(),prefixes.end(),prefix);
-        auto len=p.second-p.first;
-        assert(0<=len && len<=1);
-        uint32_t id;
-        if(len==0)
-            return URI(id,localName);
-    }
-    return URI(-1, label);
-}
-
 void Codes::load(std::ifstream& f)
 {
     root=Node::load(f);
-    makePrefixes();
     MakeCode(root, 0);
     delete root;
     root=NULL;
