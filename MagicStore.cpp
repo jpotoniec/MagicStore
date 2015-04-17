@@ -8,6 +8,7 @@
 #include <iterator>
 #include <cassert>
 #include <algorithm>
+#include <sstream>
 
 const std::string ub="http://swat.cse.lehigh.edu/onto/univ-bench.owl#";
 const std::string rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#";
@@ -255,19 +256,33 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
         BinaryTriples& bt(*reinterpret_cast<BinaryTriples*>(cls));
         auto query=TreePattern::Query::fromSPARQL(MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND,"query"));
 
+        std::ostringstream s;
+        std::string var=query.variable();
+        s<<"<?xml version=\"1.0\"?>\n"
+            <<"<sparql xmlns=\"http://www.w3.org/2005/sparql-results#\">\n"
+            <<"<head>\n"
+            <<"<variable name=\""<<var<<"\"/>\n"
+            <<"</head>\n"
+           <<"<results>\n";
         if(query.isCount())
         {
-            page=query.variable()+"="+std::to_string(bt.count(query.where()));
+            s<<"<result><binding name=\""<<var<<"\">"
+            <<"<literal datatype=\"http://www.w3.org/2001/XMLSchema#integer\">"
+            <<bt.count(query.where())
+            <<"</literal></binding></result>\n";
         }
         else
         {
             std::deque<std::string> answer = bt.answer(query.where());
             for(auto& a:answer)
-                page+=a+"\n";
+                s<<"<result><binding name=\""<<var<<"\"><uri>"<<a<<"</uri></binding></result>\n";
         }
+        s<<"</results>\n</sparql>\n";
+        page=s.str();
     }
     catch(const std::exception& e)
     {
+        //TODO: MalformedQuery and QueryRequestRefused, are bound to HTTP status codes 400 Bad Request and 500 Internal Server Error, respectively [HTTP].
         page=e.what();
     }
 
@@ -276,6 +291,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
 
     response = MHD_create_response_from_buffer (page.length(),
                                                 (void*) page.c_str(), MHD_RESPMEM_MUST_COPY);
+    MHD_add_response_header(response, "Content-Type", "application/sparql-results+xml");
     ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
     MHD_destroy_response (response);
 
