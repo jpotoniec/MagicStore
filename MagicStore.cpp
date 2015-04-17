@@ -283,6 +283,49 @@ public:
     PCodes pCodes;
 };
 
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <microhttpd.h>
+
+int answer_to_connection (void *cls, struct MHD_Connection *connection,
+                          const char *url,
+                          const char *method, const char *version,
+                          const char *upload_data,
+                          size_t *upload_data_size, void **con_cls)
+{
+    BinaryTriples& bt(*reinterpret_cast<BinaryTriples*>(cls));
+    auto query=std::unique_ptr<TreePattern::Node>(TreePattern::Node::fromTriples(parseSparql(MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND,"query"))));
+    query->sort();
+
+    std::string page;
+    std::deque<std::string> answer = bt.answer(query.get());
+    for(auto& a:answer)
+        page+=a+"\n";
+
+    struct MHD_Response *response;
+    int ret;
+
+    response = MHD_create_response_from_buffer (page.length(),
+                                                (void*) page.c_str(), MHD_RESPMEM_MUST_COPY);
+    ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
+    MHD_destroy_response (response);
+
+    return ret;
+}
+
+void listen(BinaryTriples& bt)
+{
+    struct MHD_Daemon *daemon;
+
+    daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, 12345, NULL, NULL,
+                               &answer_to_connection, &bt, MHD_OPTION_END);
+    if (NULL == daemon)
+        return;
+    for(;;)
+        sleep(1000);
+}
+
 int main(int argc, char **argv)
 {
     if(argc==1)
@@ -334,38 +377,11 @@ int main(int argc, char **argv)
     }
     if(argv[1][0]=='q')
     {
-        auto query=TreePattern::Node::fromTriples(parseSparql(argv[3]));
-        query->sort();
-        query->dump(std::cout);
         std::cout<<"Querying dataset "<<argv[2]<<"\n";
         std::ifstream f(argv[2]);
         BinaryTriples bt;
         bt.load(f);
-        uint64_t start,end;
-        int n=10;
-        if(argv[1][1]=='c')
-        {
-            start=ustimer();
-            size result;
-            for(int i=0;i<n;++i)
-                result=bt.count(query);
-            end=ustimer();
-            std::cout<<"count="<<result<<std::endl;
-        }
-        else
-        {
-            std::deque<std::string> result;
-            start=ustimer();
-            for(int i=0;i<n;++i)
-                result=bt.answer(query);
-            end=ustimer();
-            if(result.size()<100)
-                for(auto i:result)
-                    std::cout<<i<<"\n";
-            std::cout<<"# of rows: "<<result.size()<<std::endl;
-        }
-        double avg=static_cast<double>(end-start)/n/1e6;
-        std::cout<<"avg="<<avg<<" (over "<<n<<" tries)"<<std::endl;
+        listen(bt);
     }
     return 0;
 }
