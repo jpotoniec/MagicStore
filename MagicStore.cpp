@@ -365,6 +365,7 @@ int main(int argc, char **argv)
         std::ifstream f(argv[2]);
         BinaryTriples bt;
         bt.load(f);
+        f.close();
         listen(bt);
     }
     return 0;

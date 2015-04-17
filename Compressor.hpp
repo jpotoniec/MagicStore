@@ -92,11 +92,11 @@ class Codes : private boost::noncopyable
 	public:
         uint32_t operator[](const std::string& value) const
         {
-            return valToCode.left.find(value)->second;
+            return valToCode.left.find(encode(value))->second;
 		}
-        const std::string& decode(uint32_t code) const
+        std::string decode(uint32_t code) const
         {
-            return valToCode.right.find(code)->second;
+            return decode(valToCode.right.find(code)->second);
         }
         Codes()
             :root(NULL)
@@ -117,10 +117,20 @@ class Codes : private boost::noncopyable
         void load(std::ifstream& f);
         void save(std::ofstream& f) const;
 	private:
+        typedef std::pair<uint32_t,std::string> URI;
         void MakeCode(const Node *root, uint32_t prefix, uint8_t len=0);
-        typedef boost::bimap<std::string,uint32_t> Map;
+        void makePrefixes();
+        URI encode(const std::string& uri) const;
+        std::string decode(const URI &shorthand) const
+        {
+            if(shorthand.first==-1)
+                return shorthand.second;
+            return prefixes[shorthand.first]+shorthand.second;
+        }
+        typedef boost::bimap<URI,uint32_t> Map;
         Map valToCode;
 		Node *root;
+        std::deque<std::string> prefixes;
 #if USE_UNORDERED_SET
         std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
 #else
