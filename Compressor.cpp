@@ -19,7 +19,7 @@ void Codes::MakeCode(const Node *root, uint32_t prefix, uint8_t len)
 	if(root!=NULL)
 	{
 		if(!root->getLabel().empty())
-            valToCode[root->getLabel()]=prefix;
+            valToCode.insert(Map::value_type(root->getLabel(), prefix));
         uint32_t lcode(prefix);
         uint32_t rcode(prefix|(1<<len));
         MakeCode(root->getLeft(),lcode,len+1);
@@ -63,9 +63,6 @@ void Codes::compress()
 		nodes.pop();        
 		nodes.push(new Node("",l->getOccurences()+r->getOccurences(),l,r));
     }
-#if USE_UNORDERED_MAP
-    valToCode.rehash(countLeaves(root));
-#endif
     MakeCode(root, 0);
 }
 
@@ -73,6 +70,8 @@ void Codes::load(std::ifstream& f)
 {
     root=Node::load(f);
     MakeCode(root, 0);
+    delete root;
+    root=NULL;
 }
 
 void Codes::save(std::ofstream& f) const

@@ -6,11 +6,8 @@
 #include <cassert>
 #include <memory>
 #include <iosfwd>
-#if USE_UNORDERED_MAP
-#include <unordered_map>
-#else
-#include <map>
-#endif
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_set_of.hpp>
 #if USE_UNORDERED_SET
 #include <unordered_set>
 #else
@@ -94,21 +91,12 @@ class Codes : private boost::noncopyable
 {
 	public:
         uint32_t operator[](const std::string& value) const
-		{
-			return valToCode.find(value)->second;
+        {
+            return valToCode.left.find(value)->second;
 		}
         const std::string& decode(uint32_t code) const
         {
-            const Node *n=root;
-            while(n->hasChildren())
-            {
-                if(code&1)
-                    n=n->getRight();
-                else
-                    n=n->getLeft();
-                code>>=1;
-            }
-            return n->getLabel();
+            return valToCode.right.find(code)->second;
         }
         Codes()
             :root(NULL)
@@ -130,11 +118,8 @@ class Codes : private boost::noncopyable
         void save(std::ofstream& f) const;
 	private:
         void MakeCode(const Node *root, uint32_t prefix, uint8_t len=0);
-#if USE_UNORDERED_MAP
-        std::unordered_map<std::string,uint32_t> valToCode;
-#else
-        std::map<std::string,uint32_t> valToCode;
-#endif
+        typedef boost::bimap<std::string,uint32_t> Map;
+        Map valToCode;
 		Node *root;
 #if USE_UNORDERED_SET
         std::unordered_set<Node*, NodeSetHelper, NodeSetHelper> input;
