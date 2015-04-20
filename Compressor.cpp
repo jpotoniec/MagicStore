@@ -19,7 +19,7 @@ void Codes::MakeCode(const Node *root, uint32_t prefix, uint8_t len)
 	if(root!=NULL)
 	{
 		if(!root->getLabel().empty())
-            valToCode.insert(Map::value_type(trie.find(root->getLabel()), prefix));
+            valToCode.insert(Map::value_type(trie.insert(root->getLabel()), prefix));
         uint32_t lcode(prefix);
         uint32_t rcode(prefix|(1<<len));
         MakeCode(root->getLeft(),lcode,len+1);
@@ -72,6 +72,7 @@ void Codes::load(std::ifstream& f)
     MakeCode(root, 0);
     delete root;
     root=NULL;
+    trie.compress();
 }
 
 void Codes::save(std::ofstream& f) const
